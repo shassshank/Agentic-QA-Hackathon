@@ -71,6 +71,7 @@ def _access_state(run: ScenarioRun) -> dict[str, Any]:
     header = read_header(run.page)
     return jsonable({
         "path": run.path(),
+        "nav_paths": run.__dict__.get("_nav_cache", {}),
         "landing_enter_visible": run.page.get_by_role("button", name=ENTER).count() > 0,
         "header_customer": header.get("customer"),
         "logout_visible": run.page.get_by_role("button", name=LOGOUT).count() > 0,

@@ -279,7 +279,7 @@ def read_header(page: Page) -> dict:
       const header = document.querySelector('header') || document.body;
       const buttons = [...header.querySelectorAll('button,a')].map(text).filter(Boolean);
       return {
-        customer: text(document.querySelector('[data-testid="active-customer"]')),
+        customer: text(document.querySelector('[data-testid="active-customer"],header [class*=customer]')),
         text: text(header),
         controls: buttons,
       };
@@ -292,8 +292,8 @@ def read_profile(page: Page) -> dict:
       const main = document.querySelector('main') || document.body;
       const pairs = [...main.querySelectorAll('dt')].map(dt => [text(dt), text(dt.nextElementSibling)]);
       return {
-        name: text(document.querySelector('[data-testid="profile-name"]')),
-        email: text(document.querySelector('[data-testid="profile-email"]')),
+        name: text(document.querySelector('[data-testid="profile-name"]') || [...main.querySelectorAll('dt')].find(e => /name/i.test(text(e)))?.nextElementSibling),
+        email: text(document.querySelector('[data-testid="profile-email"]') || [...main.querySelectorAll('dt')].find(e => /email/i.test(text(e)))?.nextElementSibling),
         fields: Object.fromEntries(pairs),
         text: text(main),
       };
@@ -308,7 +308,7 @@ def read_select_options(page: Page, label: str | re.Pattern[str]) -> list[Select
 
 def read_transfer_balances(page: Page) -> list[dict]:
     """Balance list shown beside the transfer form (name/identifier text → balance)."""
-    raw = page.evaluate(r"""() => [...document.querySelectorAll('[data-testid="transfer-balance"]')].map(el => ({
+    raw = page.evaluate(r"""() => [...document.querySelectorAll('[data-testid="transfer-balance"], .balance-list__value')].map(el => ({
       label: ((el.closest('li') || el.parentElement).innerText || '').replace(el.innerText, '').trim(),
       balance: el.innerText.trim(),
     }))""")

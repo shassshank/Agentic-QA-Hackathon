@@ -146,6 +146,7 @@ def probe_command(
     only: list[str] = typer.Option(None, help="Probe id or prefix (repeatable), e.g. trf.reject or ses."),
     skip_mutating: bool = typer.Option(False, help="Skip probes that move money."),
     headed: bool = typer.Option(False, help="Show the browser."),
+    chaos: str = typer.Option("", help="Comma-separated labels,testids,slow,flaky variants."),
     list_only: bool = typer.Option(False, "--list", help="List probes and exit."),
 ) -> None:
     """Run deterministic scenarios against the target and record observations (no LLM)."""
@@ -174,7 +175,7 @@ def probe_command(
         console.print(f"[{colours[result.status]}]{result.status:9}[/] {result.id:32} {result.duration_ms:6} ms{detail}")
 
     results = run_probes(target, run_dir, only=only, skip_mutating=skip_mutating, headless=not headed,
-                         on_result=report)
+                         on_result=report, chaos=[v.strip() for v in chaos.split(",") if v.strip()])
     restored = [r.facts.get("restore", {}).get("restored") for r in results if "restore" in r.facts]
     console.print(f"{len(results)} probes: " + ", ".join(
         f"{s}={sum(r.status == s for r in results)}" for s in ("completed", "blocked", "errored")))
@@ -219,6 +220,19 @@ def verify_command(
         if check.status == "fail":
             console.print(f"FAIL {check.probe_id} / {check.id}: {check.reason}", markup=False)
     console.print(f"Wrote {output}")
+
+
+@app.command("chaos-compare")
+def chaos_compare_command(base: Path = typer.Option(..., exists=True),
+                          variant: Path = typer.Option(..., exists=True)) -> None:
+    """Report verdict changes between a baseline and a chaos run."""
+    import json
+    from .chaos.compare import compare
+
+    result = compare(base, variant)
+    (variant / "compare.json").write_text(json.dumps(result, indent=2))
+    console.print(result['transitions'])
+    console.print(f"Pass/fail flips: {len(result['flips'])}")
 
 
 def _print_verdicts(report) -> None:
@@ -283,7 +297,7 @@ def run_command(
     run_dir.mkdir(parents=True, exist_ok=True)
     catalogue = interpret(prd, client, cache_dir=AGENT_ROOT / ".cache")
     save(catalogue, run_dir / "requirements.json")
-    probe_command(url=url, out=run_dir, only=None, skip_mutating=False, headed=False, list_only=False)
+    probe_command(url=url, out=run_dir, only=None, skip_mutating=False, headed=False, list_only=False, chaos="")
     verify_command(run=run_dir)
     result = run_verdict(run_dir, catalogue, client, cache_dir=AGENT_ROOT / ".cache", meter=meter,
                          no_confirm=no_confirm)

@@ -16,7 +16,7 @@ def evaluate(b: Builder) -> None:
             found = next((c for c in controls if re.search(pattern, c.get('label') or '', re.I)), None)
             b.add('transfer.form_fields', label, bool(found) if 'controls' in f else None,
                   f'{label} control present', found)
-        memo = next((c for c in controls if 'memo' in (c.get('label') or '').lower()), None)
+        memo = next((c for c in controls if re.search('memo|note|reference', c.get('label') or '', re.I)), None)
         b.add('transfer.memo_optional', 'form', not memo.get('required') if memo else None,
               'memo not required', memo)
         return
@@ -54,7 +54,11 @@ def evaluate(b: Builder) -> None:
         return
     amount = number(plan.get('amount'))
     source, dest = plan.get('source_key'), plan.get('destination_key')
-    for behaviour in (['transfer.valid'] + (['transfer.amount_accept'] if pid in ('trf.min_amount', 'trf.exact_balance') else []) +
+    # Duplicate-submit and slow-network probes click repeatedly or under latency; their extra clicks legitimately
+    # meet the cleared form's validation, so they feed only the duplicate/loading families, not transfer.valid.
+    accept = pid in ('trf.valid', 'trf.memo_optional', 'trf.min_amount', 'trf.exact_balance')
+    for behaviour in ((['transfer.valid'] if accept else []) +
+                      (['transfer.amount_accept'] if pid in ('trf.min_amount', 'trf.exact_balance') else []) +
                       (['transfer.funds_boundary'] if pid == 'trf.exact_balance' else [])):
         b.add(behaviour, 'committed', committed if 'posts' in attempt else None, '2xx POST', posts)
         b.add(behaviour, 'success', success(feedback) if 'feedback' in attempt else None,

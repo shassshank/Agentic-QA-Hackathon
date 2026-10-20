@@ -35,6 +35,8 @@ class StepRecord(BaseModel):
     url: str
     screenshot: str | None = None
     detail: str | None = None
+    method: str | None = None
+    score: float | None = None
     at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -102,7 +104,8 @@ class EvidenceRecorder:
         return name
 
     def step(self, page: Page, action: str, *, ok: bool, target: str | None = None, value: str | None = None,
-             detail: str | None = None, shot: bool = False) -> StepRecord:
+             detail: str | None = None, shot: bool = False, method: str | None = None,
+             score: float | None = None) -> StepRecord:
         record = StepRecord(
             index=len(self.steps) + 1,
             action=action,
@@ -112,6 +115,8 @@ class EvidenceRecorder:
             url=page.url,
             screenshot=self.screenshot(page, f"{action}-{target or ''}") if shot else None,
             detail=detail,
+            method=method,
+            score=score,
         )
         self.steps.append(record)
         return record

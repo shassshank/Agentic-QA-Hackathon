@@ -65,7 +65,9 @@ def evaluate(b: Builder) -> None:
             elif abs(ui) != abs(amount):
                 mismatches.append(observed)
             if (row.get('status') or '').lower() == 'completed' and (row.get('type') or '').lower() in ('deposit', 'withdrawal'):
-                b.judge('history.amount_direction', f'{name}.{i}', {'amount_text': row.get('amount_text'),
+                # Suffix by transaction id, not row position, so ids stay stable as history grows between runs.
+                b.judge('history.amount_direction', f'{name}.{(row.get("id") or str(i))[-12:]}', {
+                        'amount_text': row.get('amount_text'),
                         'type': row.get('type'), 'status': row.get('status'), 'description': row.get('description')},
                         'completed deposits credit; completed withdrawals debit; direction clear')
         statuses = sorted({m['status'] or '?' for m in mismatches})

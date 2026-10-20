@@ -200,5 +200,10 @@ Jev is used during development for small routing and triage judgments (noted in 
   - New failure review (`verdict/review.py`, one batched fast call, only when something failed): a
     requirement is FAILED only if the reviewer agrees the observations violate it; "does_not_violate"
     → unverified `link_disputed`.
+  - Adversarial review (codex) fixes: per-assertion coverage, judge cannot clear interference, failure review
+    fails closed, tighter transfer oracles (commit 92eaf7c).
+- P7 done (2026-10-20): chaos variants, deterministic self-healing, bounded read/step recovery (no session
+  re-entry, never a submit replay). Live acceptance: labels+testids and slow+flaky runs → 0 pass/fail flips vs
+  baseline; details in `docs/P7_IMPLEMENTATION.md`.
   - Result on the reference run: 55 passed, 5 failed (zero, negative, over-balance amounts; date-range
     filter; inclusive end date — all confirmed on re-run), 7 unverified; one fail correctly disputed.

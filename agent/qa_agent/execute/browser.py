@@ -13,6 +13,8 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 
 from .evidence import EvidenceRecorder
+from ..recover.heal import Healer, SNAPSHOT_JS
+from ..recover.policy import RecoveryPolicy
 
 DESKTOP = {"width": 1280, "height": 800}
 QUIET_MS = 300
@@ -92,6 +94,11 @@ class ScenarioRun:
         self.recorder = recorder
         self.base_url = base_url
         self.timeout_ms = timeout_ms
+        self.healer = Healer(recorder.dir.parent.parent / "heal-cache")
+        self.policy = RecoveryPolicy()
+        self._recovering = False
+        self._event_since_ms = 0
+        self._slow_ms = 0
 
     # --- waiting -------------------------------------------------------------------------------
 
@@ -125,6 +132,7 @@ class ScenarioRun:
     # --- navigation ----------------------------------------------------------------------------
 
     def goto(self, path: str, *, shot: bool = False) -> None:
+        self._event_since_ms = int(time.time() * 1000)
         url = path if path.startswith("http") else f"{self.base_url}{path}"
         try:
             self.page.goto(url, wait_until="domcontentloaded", timeout=self.timeout_ms)
@@ -132,6 +140,7 @@ class ScenarioRun:
             self.recorder.step(self.page, "goto", target=path, ok=False, detail=str(exc).splitlines()[0])
             raise ActionError("goto", path, str(exc).splitlines()[0]) from exc
         settled = self.settle()
+        self._recover_view(path)
         self.recorder.step(self.page, "goto", target=path, ok=True, shot=shot,
                            detail=None if settled else "page did not settle within timeout")
 
@@ -145,18 +154,67 @@ class ScenarioRun:
 
     # --- actions -------------------------------------------------------------------------------
 
-    def _visible(self, locator: Locator, action: str, target: str) -> Locator:
+    def _recover_view(self, requested: str) -> None:
+        """Retry a failed read once; never repeat a form submission.
+
+        Session loss is deliberately NOT recovered: being bounced to the landing page mid-probe is an
+        observation (it may be the defect, e.g. a refresh that logs the user out), so the probe blocks instead.
+        """
+        if self._recovering or not self.policy.enabled:
+            return
+        self._recovering = True
         try:
-            locator.first.wait_for(state="visible", timeout=self.timeout_ms)
+            retry = self.page.get_by_role('button', name=re.compile(r'^(retry|try again|reload)$', re.I))
+            failures = any((e.get('status') or 0) >= 500 for e in self.timeline() if e.get('t', 0) >= self._event_since_ms)
+            if failures and self.page.get_by_role('alert').count() and retry.count():
+                if self.policy.allow('api', 'goto', requested):
+                    retry.first.click(timeout=self.timeout_ms)
+                    self.settle()
+                    self.recorder.step(self.page, 'recovery', target=requested, ok=True, detail='retry failed read once')
+        finally:
+            self._recovering = False
+
+    def _visible(self, locator: Locator, action: str, target: str) -> Locator:
+        # A control already healed earlier in this run is very likely renamed again: probe the original briefly
+        # instead of waiting the full timeout before every heal.
+        healed_before = f'{action}:{target}' in getattr(self.healer, 'names', {})
+        try:
+            locator.first.wait_for(state="visible", timeout=min(1500, self.timeout_ms) if healed_before else self.timeout_ms)
+            return locator.first
         except PlaywrightTimeout as exc:
+            role, _, wanted = target.partition(':')
+            if role not in {'button', 'link', 'combobox', 'textbox', 'spinbutton'}:
+                role, wanted = ('combobox' if action == 'select' else None), target
+            candidates = self.page.evaluate(SNAPSHOT_JS)
+            if action == 'fill':
+                candidates = [c for c in candidates if c['role'] in {'textbox', 'spinbutton'}]
+            intent = f'{action}:{target}'
+            healed = self.healer.choose(intent, wanted, role, candidates)
+            if healed:
+                candidate, method, score = healed
+                self.recorder.step(self.page, 'heal', target=target, value=candidate['name'], ok=True,
+                                   detail='resolved changed control', method=method, score=score)
+                return self.page.locator(f'[data-qa-heal="{candidate["index"]}"]')
             self.recorder.step(self.page, action, target=target, ok=False, detail="element not visible", shot=True)
-            raise ActionError(action, target, "element not visible") from exc
-        return locator.first
+            raise ActionError(action, target, "element not visible; no unique healing candidate") from exc
+
+    def _act(self, action: str, target: str, operation) -> None:
+        for attempt in range(3):
+            try:
+                operation()
+                return
+            except PlaywrightError as exc:
+                reason = str(exc).splitlines()[0]
+                if not self.policy.retry_step(action, str(exc), attempt):
+                    self.recorder.step(self.page, action, target=target, ok=False, detail=reason)
+                    raise ActionError(action, target, reason) from exc
+                self.page.wait_for_timeout(100 * 2 ** attempt)
+                self.recorder.step(self.page, 'recovery', target=target, ok=True, detail='bounded detached/stability retry')
 
     def click(self, role: str, name: str | re.Pattern[str], *, shot: bool = False, settle: bool = True) -> None:
         target = f"{role}:{name if isinstance(name, str) else name.pattern}"
         element = self._visible(self.page.get_by_role(role, name=name), "click", target)  # type: ignore[arg-type]
-        element.click(timeout=self.timeout_ms)
+        self._act("click", target, lambda: element.click(timeout=self.timeout_ms))
         if settle:
             self.settle()
         self.recorder.step(self.page, "click", target=target, ok=True, shot=shot)
@@ -164,7 +222,7 @@ class ScenarioRun:
     def fill(self, label: str | re.Pattern[str], value: str, *, shot: bool = False) -> None:
         target = label if isinstance(label, str) else label.pattern
         element = self._visible(self.page.get_by_label(label), "fill", target)
-        element.fill(value, timeout=self.timeout_ms)
+        self._act("fill", target, lambda: element.fill(value, timeout=self.timeout_ms))
         self.recorder.step(self.page, "fill", target=target, value=value, ok=True, shot=shot)
 
     def select(self, label: str | re.Pattern[str], *, option_label: str | None = None,
@@ -179,10 +237,10 @@ class ScenarioRun:
                 self.recorder.step(self.page, "select", target=target, value=option_label, ok=False,
                                    detail=f"no option containing {option_label!r}; options={options}", shot=True)
                 raise ActionError("select", target, f"no option containing {option_label!r}")
-            element.select_option(label=match, timeout=self.timeout_ms)
+            self._act("select", target, lambda: element.select_option(label=match, timeout=self.timeout_ms))
             value = match
         else:
-            element.select_option(value=option_value or "", timeout=self.timeout_ms)
+            self._act("select", target, lambda: element.select_option(value=option_value or "", timeout=self.timeout_ms))
             value = option_value or ""
         self.recorder.step(self.page, "select", target=target, value=value, ok=True, shot=shot)
 
@@ -196,9 +254,9 @@ class ScenarioRun:
         if clicks > 1:
             # Rapid repeated clicks without waiting: probes duplicate-submission handling.
             for _ in range(clicks):
-                element.click(timeout=self.timeout_ms, force=True, no_wait_after=True)
+                self._act("submit", target, lambda: element.click(timeout=self.timeout_ms, force=True, no_wait_after=True))
         else:
-            element.click(timeout=self.timeout_ms)
+            self._act("submit", target, lambda: element.click(timeout=self.timeout_ms))
         if settle:
             self.settle()
         self.recorder.step(self.page, "submit", target=target, value=f"clicks={clicks}" if clicks > 1 else None,
@@ -230,7 +288,7 @@ class ScenarioRun:
             session = self.__dict__["_cdp"] = self.page.context.new_cdp_session(self.page)
             session.send("Network.enable")
         session.send("Network.emulateNetworkConditions", {
-            "offline": False, "latency": latency_ms, "downloadThroughput": -1, "uploadThroughput": -1,
+            "offline": False, "latency": max(latency_ms, self._slow_ms), "downloadThroughput": -1, "uploadThroughput": -1,
         })
         self.recorder.step(self.page, "throttle", value=f"{latency_ms}ms", ok=True)
 
@@ -246,17 +304,23 @@ class ScenarioRun:
             self.recorder.step(self.page, "enter_demo", ok=False, detail="dashboard not reached", shot=True)
             raise ActionError("enter_demo", "/dashboard", "dashboard not reached after Enter Demo") from exc
         self.settle()
-        self.recorder.step(self.page, "enter_demo", target="/dashboard", ok=True)
+        self._recover_view(self.path())
+        self.recorder.step(self.page, "enter_demo", target=self.path(), ok=True)
 
 
 class Harness:
     def __init__(self, base_url: str, out_dir: Path, *, headless: bool = True, timeout_ms: int = 10_000,
-                 trace: bool = True) -> None:
+                 trace: bool = True, chaos: list[str] | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.out_dir = out_dir
         self.headless = headless
         self.timeout_ms = timeout_ms
         self.trace = trace
+        self.chaos = chaos or []
+        from ..chaos.variants import VARIANTS
+        if set(self.chaos) - VARIANTS:
+            raise ValueError("unknown chaos variant")
+        self.healer = Healer(out_dir.parent / "heal-cache")
         self._pw: Playwright | None = None
         self._browser: Browser | None = None
 
@@ -279,12 +343,20 @@ class Harness:
         tracing = False
         try:
             context.add_init_script(TIMELINE_JS)
+            if self.chaos:
+                from ..chaos.variants import install
+                install(context, self.chaos)
             if self.trace:
                 context.tracing.start(screenshots=True, snapshots=True)
                 tracing = True
             page = context.new_page()
             recorder.attach(page)
-            yield ScenarioRun(page, recorder, self.base_url, self.timeout_ms)
+            run = ScenarioRun(page, recorder, self.base_url, self.timeout_ms)
+            run.healer = self.healer
+            if "slow" in self.chaos:
+                run._slow_ms = 800
+                run.throttle(800)
+            yield run
         finally:
             # Evidence persistence is best effort; closing the context is not.
             try:

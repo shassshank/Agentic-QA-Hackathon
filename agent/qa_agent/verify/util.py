@@ -68,8 +68,19 @@ def success(feedback: dict) -> bool:
 
 def content(state: dict) -> bool | None:
     path = state.get('requested', state.get('path', '')).split('?')[0]
-    field = ('account_cards' if path == '/dashboard' else 'transfer_form' if path == '/transfer'
-             else 'profile_fields' if path == '/profile' else 'transaction_rows')
+    paths = state.get('nav_paths', {})
+    kind = next((name for name, route in paths.items() if route.split('?')[0] == path), None)
+    kind = kind or path.strip('/').split('/')[0]
+    field = {'dashboard': 'account_cards', 'transfer': 'transfer_form', 'profile': 'profile_fields'}.get(kind)
+    if field is None:
+        if state.get('transfer_form'):
+            field = 'transfer_form'
+        elif state.get('profile_fields'):
+            field = 'profile_fields'
+        elif state.get('account_cards'):
+            field = 'account_cards'
+        else:
+            field = 'transaction_rows'
     if field not in state:
         return None
     # A detail/history page can legitimately have an empty history.

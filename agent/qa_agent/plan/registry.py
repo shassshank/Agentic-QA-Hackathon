@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel
+from playwright.sync_api import Error as PlaywrightError
+from ..recover.policy import RecoveryPolicy
 
 from ..execute import ActionError, Harness, ScenarioRun
 from ..execute.browser import DESKTOP
@@ -119,11 +121,16 @@ class ProbeContext:
         self.sessions.append(name)
         outer = self._run
         with self.harness.scenario(name, viewport=viewport or self.probe.viewport or DESKTOP) as run:
+            run.policy = RecoveryPolicy(self.probe.id)
             self._run = run
             try:
                 yield run
             finally:
                 self.facts.setdefault("_timeline", {})[label] = run.timeline()
+                # Recoveries and heals are part of what happened; oracles and the report must see them.
+                for step in run.recorder.steps:
+                    if step.action in ("recovery", "heal"):
+                        self.facts.setdefault("_recoveries", []).append(jsonable(step))
                 self._run = outer
 
 
@@ -138,7 +145,7 @@ def run_probe(probe_def: Probe, harness: Harness, run_tag: str) -> ProbeResult:
             probe_def.fn(ctx)
     except ProbeBlocked as exc:
         status, error = "blocked", str(exc)
-    except ActionError as exc:
+    except (ActionError, PlaywrightError) as exc:
         status, error = "blocked", str(exc)
     except Exception as exc:  # noqa: BLE001 - one broken probe must not stop the run
         status, error = "errored", f"{exc.__class__.__name__}: {exc}\n{traceback.format_exc(limit=4)}"
@@ -159,7 +166,7 @@ def select_probes(only: list[str] | None = None, skip_mutating: bool = False) ->
 
 def run_probes(base_url: str, out_dir: Path, *, only: list[str] | None = None, skip_mutating: bool = False,
                headless: bool = True, on_result: Callable[[ProbeResult], None] | None = None,
-               run_tag: str | None = None) -> list[ProbeResult]:
+               run_tag: str | None = None, chaos: list[str] | None = None) -> list[ProbeResult]:
     tag = run_tag or secrets.token_hex(3)
     results: list[ProbeResult] = []
     chosen = select_probes(only, skip_mutating)
@@ -168,12 +175,12 @@ def run_probes(base_url: str, out_dir: Path, *, only: list[str] | None = None, s
     def write(complete: bool) -> None:
         # Rewritten after every probe (atomically) so an interrupted run keeps what it observed.
         payload = {"run_tag": tag, "base_url": base_url, "complete": complete, "planned": [p.id for p in chosen],
-                   "results": [r.model_dump(mode="json") for r in results]}
+                   "chaos": chaos or [], "results": [r.model_dump(mode="json") for r in results]}
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
         tmp.replace(path)
 
-    with Harness(base_url, out_dir / "evidence", headless=headless) as harness:
+    with Harness(base_url, out_dir / "evidence", headless=headless, chaos=chaos) as harness:
         for probe_def in chosen:
             result = run_probe(probe_def, harness, tag)
             results.append(result)
