@@ -21,7 +21,7 @@ Judging weights: accuracy 30, rigor 25, cost 20, resilience 15, evidence 10.
 | Topic | Decision |
 |---|---|
 | Language | Python 3.12 (uv-managed), Playwright for Python, Pydantic v2, pytest |
-| LLM | Pluggable provider interface; Claude default (Sonnet 5.5 for one-time interpretation/planning, Haiku 5.5 for recovery/judge calls, prompt caching). One alternative provider for cost comparison. |
+| LLM | Pluggable provider interface; **Gemini default** (Gemini Flash at higher reasoning for one-time interpretation/planning, Flash at low reasoning for recovery/judge calls, context caching). Claude is the alternative provider for cost comparison. Keys and model ids come from `agent/.env` (`GEMINI_API_KEY`). |
 | Target during development | Local DemoBank (`test-website/LOCAL_SETUP.md`); hosted URL plugged in when organizers provide it |
 | Repo | git at kit root; agent lives in `agent/`; target app untouched |
 | Git policy | Local commits only; push / PR only on explicit per-request approval |
