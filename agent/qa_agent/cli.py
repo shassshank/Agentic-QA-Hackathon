@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import typer
 from rich.console import Console
@@ -94,6 +96,47 @@ def doctor(skip_llm: bool = typer.Option(False, help="Skip the live LLM call."))
 
     console.print(table)
     raise typer.Exit(code=0 if healthy else 1)
+
+
+@app.command("interpret")
+def interpret_command(
+    prd: Path = typer.Option(..., exists=True, dir_okay=False, help="Path to the PRD markdown."),
+    out: Path = typer.Option(Path("runs/requirements.json"), help="Where to write the catalogue."),
+    no_cache: bool = typer.Option(False, help="Ignore the cached catalogue for this PRD and model."),
+) -> None:
+    """Extract atomic, verifiable requirements from the PRD."""
+    from collections import Counter
+
+    from .config import AGENT_ROOT
+    from .interpret import interpret, save
+    from .llm import CostMeter, get_client
+
+    settings = load_settings()
+    meter = CostMeter()
+    catalogue = interpret(prd, get_client(settings, meter), cache_dir=AGENT_ROOT / ".cache", use_cache=not no_cache)
+    save(catalogue, out)
+
+    table = Table(title=f"{len(catalogue.requirements)} requirements from {len(catalogue.bullets)} PRD bullets")
+    table.add_column("Area")
+    table.add_column("Count", justify="right")
+    for area, count in sorted(Counter(r.area.value for r in catalogue.requirements).items()):
+        table.add_row(area, str(count))
+    console.print(table)
+    testability = Counter(r.testability.value for r in catalogue.requirements)
+    console.print(f"Testability: {dict(testability)}  |  excluded bullets: {len(catalogue.excluded)}")
+    console.print(f"Model: {catalogue.model}  |  warnings: {len(catalogue.warnings)}")
+    for warning in catalogue.warnings:
+        console.print(f"  [yellow]! {warning}[/]")
+    if meter.entries:
+        for entry in meter.entries:
+            console.print(
+                f"LLM {entry.phase}: {entry.model} in={entry.input_tokens} out={entry.output_tokens} "
+                f"thinking={entry.thinking_tokens} {entry.latency_ms} ms"
+            )
+        meter.save(out.with_name("cost_interpret.json"))
+    else:
+        console.print("LLM: cache hit, 0 tokens")
+    console.print(f"Wrote {out}")
 
 
 if __name__ == "__main__":
