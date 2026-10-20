@@ -1,3 +1,9 @@
 runs/
 .venv/
 .cache/
+
+# Playwright and run artifacts (curated submission reports go in reports/, which is tracked)
+test-results/
+playwright-report/
+*.har
+trace*.zip
