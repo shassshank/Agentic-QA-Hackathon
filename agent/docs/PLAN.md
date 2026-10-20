@@ -136,6 +136,21 @@ Jev is used during development for small routing and triage judgments (noted in 
 
 - Hosted DemoBank URL (organizers).
 - `ANTHROPIC_API_KEY` only if the Claude comparison run is wanted.
+- **Gemini key is free tier: 20 requests / model / day.** Development, eval runs and the demo share
+  this. Decide whether to enable billing; otherwise every phase must stay cache-first and judge calls
+  must be batched.
+- Reference catalogue: v3 from `gemini-3.8-flash` (67 requirements) needs one repair call for 4 bullets
+  whose "clear"/"readable" wording lacks a judge assertion (B04, B09, B23, B26) once quota resets.
+
+## 7a. Inputs to P4/P5 from the agy (Opus 4.6) catalogue review
+
+- Planner default edge/negative cases: single-day date range, open-ended range (start only / end only),
+  start after end, transfer of the exact balance, same-account savings→savings, clearing filters from an
+  empty result, refresh on non-dashboard protected views, rapid double click on Enter Demo and on submit.
+- Filter oracle: expected rows = unfiltered history ∩ predicate; assert set equality (no extra rows, no
+  missing rows) and non-empty when matches exist.
+- Duplicate-submit oracle: count POSTs in captured network traffic and check the UI busy/disabled state.
+- Masking oracle: "not all characters of the identifier visible", never a specific mask character.
 - Pricing table for the cost report: confirm current per-token prices for the chosen Gemini models.
 
 ## 8. Resolved
