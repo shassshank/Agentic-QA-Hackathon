@@ -73,6 +73,16 @@ def test_daily_quota_429_skips_retry_and_moves_on():
     assert models.calls == ["primary", "backup"]
 
 
+def test_short_retry_delay_is_honoured():
+    quota = {"error": {"message": "slow down", "details": [
+        {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "30s"}]}}
+    slept: list[float] = []
+    client, _, _ = _client({"primary": [errors.ClientError(429, quota), _ok()]}, fallbacks=[])
+    client._sleep = slept.append
+    assert client.generate("hi", phase="test", tier="planner").model == "primary"
+    assert slept == [30.0]
+
+
 def test_non_retryable_client_error_propagates():
     client, _, _ = _client({"primary": [errors.ClientError(400, {"error": {"message": "bad"}})]}, fallbacks=[])
     with pytest.raises(errors.ClientError):

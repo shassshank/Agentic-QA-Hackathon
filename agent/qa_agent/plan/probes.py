@@ -18,7 +18,7 @@ from ..execute import ScenarioRun
 from ..models import Area, ScenarioKind
 from ..observe import (local_date, read_account_detail, read_accounts, read_feedback, read_header, read_layout, read_page_text,
                        read_profile, read_select_options, read_storage, read_transactions)
-from .flows import (accounts_pair, account_detail, attempt_transfer, dashboard_accounts, last_api_json, nav_path,
+from .flows import (account_key, accounts_pair, account_detail, attempt_transfer, dashboard_accounts, last_api_json, nav_path,
                     restore, rows_with_memo, snapshot)
 from .registry import ProbeBlocked, ProbeContext, jsonable, probe
 
@@ -359,28 +359,42 @@ def _transfer_case(ctx: ProbeContext, *, amount: str | None = None, amount_of: s
         amount = f"{source.balance + delta:.2f}"
     assert amount is not None
     memo = ctx.memo(memo_label) if memo_label else None
-    ctx.fact("plan", {"source": source.name, "destination": destination.name, "amount": amount, "memo": memo,
+    ctx.fact("plan", {"source": source.name, "destination": destination.name, "source_key": account_key(source),
+                      "destination_key": account_key(destination), "amount": amount, "memo": memo,
                       "clicks": clicks, "latency_ms": latency_ms})
     before = ctx.fact("before", snapshot(run, "before"))
-    if latency_ms:
-        run.throttle(latency_ms)
-    ctx.fact("attempt", attempt_transfer(run, source=source.name, destination=destination.name, amount=amount,
-                                         memo=memo, clicks=clicks))
-    if latency_ms:
-        run.throttle(0)
-    ctx.fact("after", snapshot(run, "after"))
-    if verify_histories:
-        ctx.fact("source_detail", account_detail(run, source))
-        ctx.fact("destination_detail", account_detail(run, destination))
-    if reload_after:
-        run.goto(nav_path(run, "transactions"))
-        run.reload()
-        reloaded = read_transactions(run.page)
-        run.goto(nav_path(run, "dashboard"))
-        run.reload()
-        ctx.fact("after_reload", {"rows": reloaded.rows, "accounts": read_accounts(run.page),
-                                  "memo_rows": rows_with_memo(jsonable(reloaded.rows), memo) if memo else None})
-    ctx.fact("restore", restore(ctx, before))
+    after: dict | None = None
+    try:
+        if latency_ms:
+            run.throttle(latency_ms)
+        ctx.fact("attempt", attempt_transfer(run, source=account_key(source),
+                                                       destination=account_key(destination), amount=amount,
+                                                       memo=memo, clicks=clicks))
+        if latency_ms:
+            run.throttle(0)
+        after = ctx.fact("after", snapshot(run, "after"))
+        if verify_histories:
+            ctx.fact("source_detail", account_detail(run, source))
+            ctx.fact("destination_detail", account_detail(run, destination))
+        if reload_after:
+            run.goto(nav_path(run, "transactions"))
+            run.reload()
+            reloaded = read_transactions(run.page)
+            run.goto(nav_path(run, "dashboard"))
+            run.reload()
+            ctx.fact("after_reload", {"rows": reloaded.rows, "accounts": read_accounts(run.page),
+                                      "memo_rows": rows_with_memo(jsonable(reloaded.rows), memo) if memo else None})
+    finally:
+        # Runs even when an observation step fails after submission: a committed transfer must not be
+        # left behind. Without an "after" snapshot, restore takes one now (wider window, still ours).
+        committed = ctx.facts.get("attempt", {}).get("posts", [])
+        untagged = sum(1 for p in committed if (p.get("status") or 0) < 300) if not memo else 0
+        try:
+            if latency_ms:
+                run.throttle(0)
+            ctx.fact("restore", restore(ctx, before, after, committed_without_memo=untagged))
+        except Exception as exc:  # noqa: BLE001 - never mask the original failure; record cleanup failure
+            ctx.fact("restore", {"restored": False, "reason": f"restore failed: {exc.__class__.__name__}: {exc}"})
 
 
 @probe("trf.valid", Area.TRF, N, "Valid transfer with memo between the two owned accounts",

@@ -71,6 +71,7 @@ Rules:
 
 _ID = re.compile(r"^(SES|ACC|TRF|HIS|PRO|GEN|SEED)-\d{3}$")
 _QUALITY_WORDS = re.compile(r"\b(clear|clearly|readable|understandable)\b", re.I)
+_NORMATIVE = re.compile(r"\b(must|must not|must never|shall|should|never|required)\b", re.I)
 
 
 def _sha256(*parts: str) -> str:
@@ -117,6 +118,10 @@ def validate(result: ExtractionResult, bullets: list[PrdBullet]) -> list[str]:
     for bullet in bullets:
         if bullet.id not in covered and bullet.id not in excluded:
             problems.append(f"{bullet.id}: not covered by any requirement and not excluded")
+        elif bullet.id not in covered and _NORMATIVE.search(bullet.text):
+            # An obligation must stay visible in the report (as not_testable if need be), never vanish.
+            problems.append(f"{bullet.id}: states an obligation ({_NORMATIVE.search(bullet.text).group(0)!r}) "
+                            "but is excluded; make it a requirement (testability not_testable if unobservable)")
     # Wording-quality language in the PRD must reach the judge; otherwise "clear explanation" silently
     # degrades to "some message appeared".
     judged = {
@@ -148,7 +153,10 @@ def interpret(
     parsed = parse_prd(markdown)
     model = client.model_for("planner")
     prd_sha = _sha256(markdown)
-    key = _sha256(markdown, model, PROMPT_VERSION, client.provider)
+    # Everything that shapes the answer is in the key, so an edited prompt or schema never serves a
+    # stale catalogue even if PROMPT_VERSION was not bumped.
+    key = _sha256(markdown, model, PROMPT_VERSION, client.provider, SYSTEM_PROMPT,
+                  json.dumps(ExtractionResult.model_json_schema(), sort_keys=True))
     cache_file = _cache_path(cache_dir, key)
     if use_cache and cache_file.exists():
         return RequirementCatalogue.model_validate_json(cache_file.read_text())
@@ -171,8 +179,10 @@ def interpret(
             schema=ExtractionResult, thinking="medium",
         )
         if repaired.parsed is not None:
-            result, response = repaired.parsed, repaired
-            problems = validate(result, parsed.bullets)
+            repaired_problems = validate(repaired.parsed, parsed.bullets)
+            # Keep whichever answer is closer to valid; a repair can regress.
+            if result is None or len(repaired_problems) <= len(problems):
+                result, response, problems = repaired.parsed, repaired, repaired_problems
     if result is None:
         raise RuntimeError("Interpreter returned no schema-valid catalogue after repair")
 

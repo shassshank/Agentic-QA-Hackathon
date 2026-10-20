@@ -138,3 +138,30 @@ def test_quote_match_is_case_and_space_insensitive(quote):
         excluded=[Exclusion(bullet_id="B02", reason="descriptive")],
     )
     assert validate(result, BULLETS) == []
+
+
+def test_excluding_a_normative_bullet_is_a_problem():
+    bullets = [PrdBullet(id="B01", section="Profile", line=1, text="The view must not reveal passwords or tokens.")]
+    result = ExtractionResult(requirements=[], excluded=[Exclusion(bullet_id="B01", reason="not observable")])
+    assert any("B01" in p and "obligation" in p for p in validate(result, bullets))
+
+
+class SequenceClient(FakeClient):
+    """Returns a different result per call: first answer, then repair."""
+
+    def __init__(self, results: list[ExtractionResult]) -> None:
+        super().__init__(results[0])
+        self.results = results
+
+    def generate(self, prompt, *, phase, tier="fast", system=None, schema=None, thinking=None):
+        self.result = self.results[min(self.calls, len(self.results) - 1)]
+        return super().generate(prompt, phase=phase, tier=tier, system=system, schema=schema, thinking=thinking)
+
+
+def test_repair_that_regresses_is_discarded(tmp_path):
+    prd = tmp_path / "prd.md"
+    prd.write_text("# T\n\n## S\n\n- Alpha behavior.\n- Beta behavior.\n")
+    first = ExtractionResult(requirements=[_req("SES-001", Area.SES, ["B01"], "Alpha behavior")])
+    worse = ExtractionResult(requirements=[_req("SES-1", Area.SES, ["B09"], "nope")])
+    catalogue = interpret(prd, SequenceClient([first, worse]), cache_dir=tmp_path / "cache")
+    assert [r.id for r in catalogue.requirements] == ["SES-001"]

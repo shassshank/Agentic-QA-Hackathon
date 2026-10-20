@@ -29,6 +29,57 @@ def test_parse_money(text, expected):
     assert parse_money(text) == expected
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("$25.00 (•••• 1042)", Decimal("25.00")),
+        ("$25.00 as of 2026-10-20", Decimal("25.00")),
+        ("Oct 20, 2026, 10:00 AM $3.00", Decimal("3.00")),
+        ("USD 12.50", Decimal("12.50")),
+    ],
+)
+def test_parse_money_ignores_identifiers_dates_and_times(text, expected):
+    assert parse_money(text) == expected
+
+
+def _snap(balances: dict[str, str | None], rows: list[str]) -> dict:
+    return {"accounts": [{"name": n, "identifier_text": f"•••• {n}", "balance": b} for n, b in balances.items()],
+            "rows": [{"id": r, "cells": {"Description": r}} for r in rows]}
+
+
+def _ctx():
+    from qa_agent.plan.registry import ProbeContext
+
+    return ProbeContext(probe=None, harness=None, run_tag="abc123")  # type: ignore[arg-type]
+
+
+def test_restore_refuses_when_foreign_activity_in_window():
+    from qa_agent.plan.flows import restore
+
+    before = _snap({"1042": "100.00", "7781": "50.00"}, ["old"])
+    after = _snap({"1042": "49.00", "7781": "101.00"}, ["old", "qa-abc123-valid", "someone else's transfer"])
+    record = restore(_ctx(), before, after)
+    assert record["needed"] and record["restored"] is False and "foreign" in record["reason"]
+    assert record["transfers"] == []
+
+
+def test_restore_refuses_when_a_balance_is_unreadable():
+    from qa_agent.plan.flows import restore
+
+    before = _snap({"1042": "100.00", "7781": "50.00"}, [])
+    record = restore(_ctx(), before, _snap({"1042": "100.00", "7781": None}, []))
+    assert record["restored"] is False and "unreadable" in record["reason"]
+
+
+def test_window_delta_allows_our_memo_less_rows():
+    from qa_agent.plan.flows import window_delta
+
+    before = _snap({"1042": "100.00", "7781": "50.00"}, ["old"])
+    after = _snap({"1042": "98.00", "7781": "52.00"}, ["old", "Transfer from A to B"])
+    window = window_delta(before, after, run_tag="abc123", untagged_allowed=1)
+    assert window["foreign_rows"] == [] and window["delta"] == {"•••• 1042": "-2.00", "•••• 7781": "2.00"}
+
+
 def test_decimal_places_reads_last_token():
     assert decimal_places("$8,275.00USD") == 2
     assert decimal_places("$8,275.5") == 1

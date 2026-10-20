@@ -110,12 +110,14 @@ class GeminiClient:
                         failures.append(f"{model}: HTTP {exc.code} (quota, retry in {int(delay)}s)")
                         break
                     failures.append(f"{model}: HTTP {exc.code}")
+                    wait = max(self._backoff * (2**attempt), delay or 0)  # honour a short provider delay
                 except httpx.TimeoutException:
                     failures.append(f"{model}: timeout")
+                    wait = self._backoff * (2**attempt)
                 else:
                     return self._finish(response, model, phase, schema, started)
                 if attempt + 1 < self._attempts:
-                    self._sleep(self._backoff * (2**attempt))
+                    self._sleep(wait)
         raise LLMUnavailable("; ".join(failures))
 
     def _finish(

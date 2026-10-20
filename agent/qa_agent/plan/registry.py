@@ -162,12 +162,23 @@ def run_probes(base_url: str, out_dir: Path, *, only: list[str] | None = None, s
                run_tag: str | None = None) -> list[ProbeResult]:
     tag = run_tag or secrets.token_hex(3)
     results: list[ProbeResult] = []
+    chosen = select_probes(only, skip_mutating)
+    path = out_dir / "observations.json"
+
+    def write(complete: bool) -> None:
+        # Rewritten after every probe (atomically) so an interrupted run keeps what it observed.
+        payload = {"run_tag": tag, "base_url": base_url, "complete": complete, "planned": [p.id for p in chosen],
+                   "results": [r.model_dump(mode="json") for r in results]}
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+        tmp.replace(path)
+
     with Harness(base_url, out_dir / "evidence", headless=headless) as harness:
-        for probe_def in select_probes(only, skip_mutating):
+        for probe_def in chosen:
             result = run_probe(probe_def, harness, tag)
             results.append(result)
+            write(complete=False)
             if on_result:
                 on_result(result)
-    payload = {"run_tag": tag, "base_url": base_url, "results": [r.model_dump(mode="json") for r in results]}
-    (out_dir / "observations.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    write(complete=True)
     return results

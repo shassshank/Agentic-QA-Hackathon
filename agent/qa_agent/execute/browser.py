@@ -276,15 +276,24 @@ class Harness:
         assert self._browser is not None, "Harness must be entered before running scenarios"
         recorder = EvidenceRecorder(self.out_dir / scenario_id)
         context = self._browser.new_context(viewport=viewport or DESKTOP)
-        context.add_init_script(TIMELINE_JS)
-        if self.trace:
-            context.tracing.start(screenshots=True, snapshots=True)
-        page = context.new_page()
-        recorder.attach(page)
+        tracing = False
         try:
+            context.add_init_script(TIMELINE_JS)
+            if self.trace:
+                context.tracing.start(screenshots=True, snapshots=True)
+                tracing = True
+            page = context.new_page()
+            recorder.attach(page)
             yield ScenarioRun(page, recorder, self.base_url, self.timeout_ms)
         finally:
-            if self.trace:
-                context.tracing.stop(path=recorder.dir / "trace.zip")
-            recorder.save()
-            context.close()
+            # Evidence persistence is best effort; closing the context is not.
+            try:
+                if tracing:
+                    context.tracing.stop(path=recorder.dir / "trace.zip")
+            except PlaywrightError:
+                pass
+            finally:
+                try:
+                    recorder.save()
+                finally:
+                    context.close()
