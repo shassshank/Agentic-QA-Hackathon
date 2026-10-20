@@ -11,6 +11,7 @@ from .aggregate import aggregate
 from .confirm import confirm_failures
 from .judge import judge_checks
 from .link import link_requirements, validate
+from .review import review_failures
 from .models import LinkResult, VerdictReport
 
 
@@ -40,6 +41,9 @@ def run_verdict(run_dir: Path, catalogue: RequirementCatalogue, client=None, *, 
     if not unavailable and not no_confirm:
         confirmations = confirm_failures(checks, report.base_url, run_dir, runner=runner)
     verdicts = aggregate(catalogue, links, checks, confirmations, llm_unavailable=unavailable, run_dir=run_dir)
+    if not unavailable and not no_judge and client is not None:
+        verdicts, review_warnings = review_failures(verdicts, catalogue, client, cache_dir=cache_dir)
+        warnings.extend(review_warnings)
     counts = Counter(v.status for v in verdicts)
     result = VerdictReport(run_tag=report.run_tag, catalogue={
         'model': catalogue.model, 'prompt_version': catalogue.prompt_version, 'prd_sha256': catalogue.prd_sha256},

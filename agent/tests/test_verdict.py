@@ -122,6 +122,33 @@ def test_judge_uncertainty_and_invalid_quotes(tmp_path, verdict, rationale):
     assert checked[0].needs_judge
 
 
+@pytest.mark.parametrize('answer,status,reason', [
+    ('does_not_violate', 'unverified', 'link_disputed'),
+    ('violates', 'failed', None),
+    ('unsure', 'failed', None),
+])
+def test_failure_review(tmp_path, answer, status, reason):
+    from qa_agent.verdict.models import Review, ReviewResult
+    from qa_agent.verdict.review import review_failures
+
+    c = check('fail')
+    failed = aggregate(catalogue(), links('full'), [c], {(c.probe_id, c.id): 'confirmed'})
+    client = FakeClient(result=ReviewResult(items=[Review(requirement_id='GEN-001', verdict=answer, rationale='r')]))
+    reviewed, warnings = review_failures(failed, catalogue(), client, cache_dir=tmp_path)
+    assert (reviewed[0].status, reviewed[0].reason) == (status, reason) and not warnings
+    again, _ = review_failures(failed, catalogue(), FakeClient(fail=True), cache_dir=tmp_path)
+    assert again[0].status == status  # cached decision reused, no call needed
+
+
+def test_failure_review_outage_keeps_failed(tmp_path):
+    from qa_agent.verdict.review import review_failures
+
+    c = check('fail')
+    failed = aggregate(catalogue(), links('full'), [c], {(c.probe_id, c.id): 'confirmed'})
+    reviewed, warnings = review_failures(failed, catalogue(), FakeClient(fail=True), cache_dir=tmp_path)
+    assert reviewed[0].status == 'failed' and warnings
+
+
 def test_empty_link_reply_raises_and_is_not_cached(tmp_path):
     # A reply that misses the schema's wrapper still validates as an empty LinkResult (all defaults).
     client = FakeClient(result=LinkResult())

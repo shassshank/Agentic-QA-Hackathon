@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from ..llm.base import LLMUnavailable
 from ..models import RequirementCatalogue, Testability
@@ -10,7 +11,12 @@ from ..verify.models import Check
 from .models import Link, LinkResult
 
 SYSTEM_PROMPT = '''You are a QA coverage analyst. Link every requirement exactly once to the supplied check families.
-Use only supplied family tags, optionally followed by a check-id suffix filter, e.g. transfer.record.memo.
+Use only supplied family tags, optionally followed by a check-id suffix filter from that family's suffixes,
+e.g. transfer.record.memo or transfer.same_account.explanation_quality.
+A linked family must test the behaviour the requirement states, not merely touch the same data: a requirement
+about what seed data exists links to families that inspect the data, not to families that test a filter.
+Requirements about wording or clarity link to families with has_judge true (their judge suffixes); they are not
+unlinkable because they need judgement.
 Use full only when the checks cover every assertion; otherwise partial or none. Do not infer observed outcomes.
 Not-testable requirements have no families and coverage none. Give a one-line rationale. Return schema JSON.'''
 USER_TEMPLATE = 'Requirements:\n{requirements}\n\nCheck families (examples contain only id and expected):\n{families}'
@@ -28,8 +34,15 @@ def matches(check: Check, family: str) -> bool:
 
 
 def family_catalogue(checks: list[Check]) -> dict:
-    return {family: [dict(id=c.id, expected=c.expected) for c in checks if c.behaviour == family][:3]
-            for family in sorted({c.behaviour for c in checks})}
+    """Outcome-free description of each family: examples, the suffixes usable as filters, judge presence."""
+    catalogue = {}
+    for family in sorted({c.behaviour for c in checks}):
+        members = [c for c in checks if c.behaviour == family]
+        # Last id segment is the usable filter; purely numeric segments (row/case indexes) are not filters.
+        suffixes = sorted({seg for c in members if not (seg := c.id[len(family) + 1:].split('.')[-1]).isdigit()})
+        catalogue[family] = dict(examples=[dict(id=c.id, expected=c.expected) for c in members][:3],
+                                 suffixes=suffixes[:12], has_judge=any(c.needs_judge for c in members))
+    return catalogue
 
 
 def validate(result: LinkResult, catalogue: RequirementCatalogue, checks: list[Check]) -> LinkResult:

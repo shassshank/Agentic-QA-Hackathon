@@ -8,7 +8,7 @@ Coverage = Literal['full', 'partial', 'none']
 Confirmation = Literal['confirmed', 'flaky', 'unconfirmed']
 Reason = Literal['not_testable', 'no_linked_checks', 'partial_coverage', 'checks_unknown',
                  'needs_judgement', 'flaky', 'unconfirmed', 'probe_blocked', 'concurrent_activity',
-                 'llm_unavailable']
+                 'llm_unavailable', 'link_disputed']
 
 
 class Link(BaseModel):
@@ -33,6 +33,16 @@ class JudgeResult(BaseModel):
     items: list[Judgement]
 
 
+class Review(BaseModel):
+    requirement_id: str
+    verdict: Literal['violates', 'does_not_violate', 'unsure']
+    rationale: str
+
+
+class ReviewResult(BaseModel):
+    items: list[Review]
+
+
 class Verdict(BaseModel):
     requirement_id: str
     area: str
@@ -42,6 +52,7 @@ class Verdict(BaseModel):
     coverage: Coverage
     checks: list[dict[str, Any]]
     failure: dict[str, Any] | None = None
+    review: dict[str, Any] | None = None  # failure-linkage review outcome, when a fail was reviewed
     unknown_checks: list[str] = Field(default_factory=list)
     matrix: dict[str, dict[str, int]] = Field(default_factory=dict)
 

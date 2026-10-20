@@ -192,3 +192,13 @@ Jev is used during development for small routing and triage judgments (noted in 
     no crash, no pass.
   - Pending: live link + judge calls (free-tier quota exhausted until reset); P8 should render steps in
     plain words (they currently show selector patterns).
+- P6 hardening (2026-10-20), exercised end to end with a local dev LLM stand-in (uncommitted, not part of
+  the submission) while the Gemini quota was exhausted:
+  - Empty/unparseable link replies are an outage, never cached (they had been cached as "no links").
+  - Family catalogue now shows filter suffixes and judge presence; link prompt requires a family to test
+    the requirement's behaviour (a date-filter check had been linked to "seed spans multiple dates").
+  - New failure review (`verdict/review.py`, one batched fast call, only when something failed): a
+    requirement is FAILED only if the reviewer agrees the observations violate it; "does_not_violate"
+    → unverified `link_disputed`.
+  - Result on the reference run: 55 passed, 5 failed (zero, negative, over-balance amounts; date-range
+    filter; inclusive end date — all confirmed on re-run), 7 unverified; one fail correctly disputed.
