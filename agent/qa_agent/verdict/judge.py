@@ -91,3 +91,46 @@ def judge_checks(checks, client, *, cache_dir: Path, token_budget: int = 12000):
             output[index].needs_judge = False
         output[index].reason = decision.rationale
     return output, warnings
+
+
+def judge_checks_jev(checks, decider, client, *, cache_dir):
+    from ..llm.typesafe import ask_many, DecisionUnavailable, EscalationClient
+    from .questions import wording_question, direction_contradiction, PASS_THRESHOLD, FAIL_THRESHOLD
+    output = [c.model_copy(deep=True) for c in checks]
+    pending, requests, warnings = [], [], []
+    for index, check in enumerate(output):
+        if not check.needs_judge or check.status != 'unknown' or not (check.reason or '').startswith('wording'):
+            continue
+        data = check.judge_input or {}
+        item = dict(criterion=data.get('criterion', check.expected),
+                    visible_text=data.get('visible_text', data.get('text', check.observed)),
+                    context=data.get('context', ''))
+        name, question = wording_question(item['criterion'])
+        if name == 'direction_shown' and direction_contradiction(item['visible_text']):
+            check.status, check.needs_judge = 'fail', False
+            check.reason = 'Explicit amount direction contradicts transaction type'
+            continue
+        pending.append((index, name))
+        requests.append(({'item': item}, {name: question}))
+    uncertain = []
+    for (index, name), answer in zip(pending, ask_many(decider, requests, phase='judge', cache_dir=cache_dir)):
+        check = output[index]
+        p = None if isinstance(answer, DecisionUnavailable) else answer[name]['noul']
+        if p is None:
+            warnings.append(f'{check.id}: Jev unavailable: {answer}')
+        model = getattr(answer, 'model', decider.model)
+        check.judge_input = dict(check.judge_input or {}, decision=dict(
+            provider='typesafe', question=name, p=p, model=model))
+        if p is not None and (p >= PASS_THRESHOLD or p <= FAIL_THRESHOLD):
+            check.status = 'pass' if p >= PASS_THRESHOLD else 'fail'
+            check.needs_judge = False
+            check.reason = f'jev noul {name} p={p:.2f} ({model})'
+        else:
+            uncertain.append(index)
+            check.reason = f'wording: jev uncertain (p={p}); no escalation'
+    if client is not None and uncertain:
+        escalated, extra = judge_checks([output[i] for i in uncertain], EscalationClient(client), cache_dir=cache_dir)
+        warnings.extend(extra)
+        for index, check in zip(uncertain, escalated):
+            output[index] = check
+    return output, warnings

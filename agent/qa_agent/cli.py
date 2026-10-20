@@ -245,31 +245,52 @@ def _print_verdicts(report) -> None:
     console.print(str(report.summary))
 
 
+def _decider(value, settings, meter, factory):
+    if value not in ('jev', 'none'):
+        raise typer.BadParameter('--decider must be jev or none')
+    return factory(settings, meter) if value == 'jev' else None
+
+
+class _CachedInterpreter:
+    def __init__(self, settings):
+        self.provider = settings.provider
+        self.settings = settings
+
+    def model_for(self, tier):
+        return self.settings.gemini_model_planner
+
+    def generate(self, *args, **kwargs):
+        raise RuntimeError('Interpretation cache miss; Gemini is required for interpretation')
+
+
 @app.command("verdict")
 def verdict_command(
     run: Path = typer.Option(..., exists=True, file_okay=False),
     catalogue: Path = typer.Option(..., exists=True, dir_okay=False),
     no_judge: bool = typer.Option(False, help="Keep wording checks unknown; no judge call."),
     no_confirm: bool = typer.Option(False, help="Skip probe re-runs; failures remain unconfirmed."),
+    decider: str = typer.Option("jev", hidden=True),
     link_file: Path = typer.Option(None, hidden=True, exists=True, dir_okay=False),
 ) -> None:
     """Turn existing checks into requirement verdicts."""
     from .config import AGENT_ROOT
-    from .llm import CostMeter, get_client
+    from .llm import CostMeter, get_client, get_decider
     from .models import RequirementCatalogue
     from .verdict import run_verdict
     from .verdict.models import LinkResult
 
+    settings = load_settings()
     meter = CostMeter()
+    decision_client = _decider(decider, settings, meter, get_decider)
     client = None
     if link_file is None or not no_judge:
         try:
-            client = get_client(load_settings(), meter)
+            client = get_client(settings, meter)
         except Exception as exc:
             console.print(f"LLM unavailable: {exc}", markup=False)
     result = run_verdict(
         run, RequirementCatalogue.model_validate_json(catalogue.read_text()), client,
-        cache_dir=AGENT_ROOT / ".cache", meter=meter,
+        cache_dir=AGENT_ROOT / ".cache", meter=meter, decider=decision_client,
         link_result=LinkResult.model_validate_json(link_file.read_text()) if link_file else None,
         no_judge=no_judge, no_confirm=no_confirm)
     _print_verdicts(result)
@@ -282,25 +303,34 @@ def run_command(
     url: str = typer.Option(...),
     out: Path = typer.Option(None, help="Run directory (default: runs/<timestamp>)."),
     no_confirm: bool = typer.Option(False),
+    decider: str = typer.Option("jev", hidden=True),
 ) -> None:
     """Interpret, probe, verify and produce requirement verdicts."""
     from datetime import datetime
     from .config import AGENT_ROOT
     from .interpret import interpret, save
-    from .llm import CostMeter, get_client
+    from .llm import CostMeter, get_client, get_decider
     from .verdict import run_verdict
 
     settings = load_settings()
     meter = CostMeter()
-    client = get_client(settings, meter)
+    decision_client = _decider(decider, settings, meter, get_decider)
+    try:
+        client = get_client(settings, meter)
+    except Exception as exc:
+        if decision_client is None:
+            raise
+        console.print(f"LLM unavailable: {exc}", markup=False)
+        client = _CachedInterpreter(settings)
     run_dir = out or settings.runs_dir / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
     catalogue = interpret(prd, client, cache_dir=AGENT_ROOT / ".cache")
     save(catalogue, run_dir / "requirements.json")
     probe_command(url=url, out=run_dir, only=None, skip_mutating=False, headed=False, list_only=False, chaos="")
     verify_command(run=run_dir)
-    result = run_verdict(run_dir, catalogue, client, cache_dir=AGENT_ROOT / ".cache", meter=meter,
-                         no_confirm=no_confirm)
+    verdict_client = None if isinstance(client, _CachedInterpreter) else client
+    result = run_verdict(run_dir, catalogue, verdict_client, cache_dir=AGENT_ROOT / ".cache",
+                         meter=meter, decider=decision_client, no_confirm=no_confirm)
     _print_verdicts(result)
 
 

@@ -26,6 +26,8 @@ class Settings(BaseModel):
             "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-pro-preview",
         ]
     )
+    typesafe_api_key: SecretStr | None = None
+    typesafe_model: str = "jev-1.13.0"
     anthropic_api_key: SecretStr | None = None
     target_url: str = "http://localhost:5173"
     runs_dir: Path = Field(default=AGENT_ROOT / "runs")
@@ -59,6 +61,8 @@ def load_settings(env_file: Path | None = None) -> Settings:
             m.strip() for m in _text("GEMINI_MODEL_FALLBACKS", ",".join(defaults.gemini_model_fallbacks)).split(",")
             if m.strip()
         ],
+        typesafe_api_key=_secret("TYPESAFE_API_KEY"),
+        typesafe_model=_text("TYPESAFE_MODEL", defaults.typesafe_model),
         anthropic_api_key=_secret("ANTHROPIC_API_KEY"),
         target_url=_text("QA_TARGET_URL", defaults.target_url).rstrip("/"),
     )

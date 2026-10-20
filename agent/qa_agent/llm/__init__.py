@@ -5,8 +5,9 @@ from __future__ import annotations
 from ..config import Settings
 from .base import LLMClient, LLMResponse, LLMUnavailable, Tier
 from .meter import CostMeter
+from .typesafe import DecisionClient
 
-__all__ = ["CostMeter", "LLMClient", "LLMResponse", "LLMUnavailable", "Tier", "get_client"]
+__all__ = ["CostMeter", "LLMClient", "LLMResponse", "LLMUnavailable", "Tier", "get_client", "get_decider"]
 
 
 def get_client(settings: Settings, meter: CostMeter) -> LLMClient:
@@ -24,3 +25,9 @@ def get_client(settings: Settings, meter: CostMeter) -> LLMClient:
             meter=meter,
         )
     raise NotImplementedError("The Claude provider lands with the cost-comparison phase (P9)")
+
+
+def get_decider(settings: Settings, meter: CostMeter) -> DecisionClient | None:
+    if settings.typesafe_api_key is None:
+        return None
+    return DecisionClient(settings.typesafe_api_key.get_secret_value(), model=settings.typesafe_model, meter=meter)

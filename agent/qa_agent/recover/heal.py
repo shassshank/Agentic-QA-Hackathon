@@ -61,8 +61,9 @@ class Decision(BaseModel):
 
 
 class Healer:
-    def __init__(self, cache_dir: Path, client: LLMClient | None = None) -> None:
+    def __init__(self, cache_dir: Path, client: LLMClient | None = None, decider=None) -> None:
         self.cache_dir, self.client = cache_dir, client
+        self.decider = decider
         self.names: dict[str, str] = {}
 
     def choose(self, intent: str, wanted: str, role: str | None, candidates: list[dict]):
@@ -70,6 +71,20 @@ class Healer:
         remembered = [c for c in eligible if c['name'] == self.names.get(intent)]
         result = (remembered[0]['index'], 1.0) if len(remembered) == 1 else match(wanted, role, candidates)
         method = 'deterministic'
+        if result is None and self.decider:
+            from ..llm.typesafe import ask_many, DecisionUnavailable
+            options = {f"c{c['index']}": f"{c['role']}: {c['name']}" for c in eligible}
+            options['none'] = 'No unambiguous match'
+            question = dict(type='choice', instructions=(
+                'Which candidate matches `intent` and `wanted`? Abstain with none if ambiguous.'), criteria=options)
+            answers = ask_many(self.decider, [({'intent': intent, 'wanted': wanted}, {'control': question})],
+                               phase='heal', cache_dir=self.cache_dir)
+            if not isinstance(answers[0], DecisionUnavailable):
+                answer = answers[0]['control']
+                p = answer['probabilities'].get(answer['choice'], 0)
+                if answer['choice'] != 'none' and p >= .85:
+                    result = int(answer['choice'][1:]), p
+                    method = 'jev'
         if result is None and self.client:
             prompt = ('Resolve only the intended UI control. Abstain if ambiguous. Return index=null when uncertain.\n'
                       + json.dumps({'intent': intent, 'candidates': eligible}, sort_keys=True))

@@ -16,7 +16,7 @@ PriceTable = dict[str, tuple[float, float]]
 class CostMeter:
     def __init__(self, prices: PriceTable | None = None) -> None:
         self.entries: list[CostEntry] = []
-        self.prices: PriceTable = prices or {}
+        self.prices: PriceTable = {"jev-1.13.0": (0.042, 0.0), "jev-1.14.0": (0.042, 0.0), **(prices or {})}
 
     def record(self, entry: CostEntry) -> None:
         self.entries.append(entry)

@@ -111,8 +111,8 @@ generation and the uncertain band, and anything still uncertain stays unknown/un
 | Call site | Today | Jev question | Accept | Otherwise |
 |---|---|---|---|---|
 | Wording judge (`verdict/judge.py`) | Gemini fast, rationale must quote visible text | One narrow **noul** per condition over the check's visible strings (e.g. "does the message say what is wrong or how to fix it", "does `amount_text` alone show in/out"). Sign-vs-type and other computable parts stay in code. | p ≥ 0.85 → pass; p ≤ 0.15 → fail (still goes through confirm + failure review) | escalate to Gemini judge; no LLM → unknown |
-| Failure review (`verdict/review.py`) | Gemini fast: violates / consistent / unsure | **choice** {violates, consistent, unsure} per failing check, state = requirement assertions + check expected/observed/reason | `violates` with p ≥ 0.90 keeps FAILED; `consistent` with p ≥ 0.90 → `link_disputed` | escalate to Gemini review; none → `unreviewed` |
-| Linking (`verdict/link.py`) | One Gemini planner call | **choice** per assertion over the family catalogue (≤ 255 options) plus `none` | confidence ≥ 0.80 and family exists | only the uncertain requirements go to the Gemini link call; coverage still computed per assertion |
+| Failure review (`verdict/review.py`) | Gemini fast: violates / consistent / unsure | **choice** {violates, condition_not_met, different_behaviour, unsure} per failed requirement, state = requirement, assertions, failing checks | P(violates) ≥ 0.90 keeps FAILED; P(condition_not_met + different_behaviour) ≥ 0.90 → `link_disputed` | escalate to Gemini review; none → `unreviewed` |
+| Linking (`verdict/link.py`) | One Gemini planner call | two stages: **choice** over families ranks; then a **noul** per (assertion, top-3 family or judged wording group) with scenario titles + checks as state | noul ≥ 0.80 | only the uncertain requirements go to the Gemini link call; coverage still computed per assertion |
 | Heal fallback (`recover/heal.py`) | optional Gemini, confidence ≥ 0.85 | **choice** over snapshot candidates plus `none`, after deterministic Jaccard matching | p ≥ 0.85 and not `none` | block with reason (no submit replay, unchanged) |
 | Interpret (`interpret/`) | Gemini planner, cached | not replaced (needs generation); optional **noul** citation check "does the source quote support this requirement" to flag invented requirements | p ≥ 0.5 | flag in the catalogue review |
 
@@ -245,3 +245,9 @@ Jev is used during development for small routing and triage judgments (noted in 
   baseline; details in `docs/P7_IMPLEMENTATION.md`.
   - Result on the reference run: 55 passed, 5 failed (zero, negative, over-balance amounts; date-range
     filter; inclusive end date — all confirmed on re-run), 7 unverified; one fail correctly disputed.
+- P7J done (2026-10-20): Jev decision layer (`llm/typesafe.py`, `verdict/questions.py`; judge, review, link,
+  heal on Jev with Gemini escalation; Jev priced in the cost meter). Live Jev-only run on the reference checks:
+  25 passed, 4 failed (zero, negative, over-balance, date range; P(violates) 0.97–1.00), 38 unverified;
+  0 false fails and every pass matches the reference. The rest is uncertain-by-design and escalates to Gemini.
+  Cold-cache Jev cost ≈ $0.017 per run. Details and the design iterations in `docs/P7J_IMPLEMENTATION.md`.
+  - Next with Gemini quota: `qa-agent verdict` with both keys to measure the escalated result.

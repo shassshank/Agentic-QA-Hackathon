@@ -81,3 +81,54 @@ def mark_unreviewed(verdicts: list[Verdict]) -> list[Verdict]:
         if verdict.status == 'failed':
             verdict.status, verdict.reason = 'unverified', 'unreviewed'
     return output
+
+
+def review_failures_jev(verdicts, catalogue, decider, client, *, cache_dir):
+    from ..llm.typesafe import ask_many, DecisionUnavailable, EscalationClient
+    from .questions import LINKAGE, NOT_VIOLATED
+    output = [v.model_copy(deep=True) for v in verdicts]
+    requirements = {r.id: r for r in catalogue.requirements}
+    pending, requests, warnings = [], [], []
+    for index, verdict in enumerate(output):
+        if verdict.status != 'failed' or not verdict.failure:
+            continue
+        req = requirements[verdict.requirement_id]
+        failing = verdict.failure.get('checks') or [verdict.failure]
+        item = dict(requirement_id=req.id, requirement=f'{req.title}: {req.statement}',
+                    assertions=[a.description for a in req.assertions],
+                    failing_observations=[dict(check=c.get('check_id'), probe=c.get('probe_id'),
+                                               expected=c.get('expected'), observed=str(c.get('observed'))[:600])
+                                          for c in failing[:12]], more_failing=max(0, len(failing)-12))
+        pending.append(index)
+        requests.append(({'item': item}, {'linkage': LINKAGE}))
+    uncertain = []
+    for index, answer in zip(pending, ask_many(decider, requests, phase='review', cache_dir=cache_dir)):
+        verdict = output[index]
+        a = {} if isinstance(answer, DecisionUnavailable) else answer['linkage']
+        # Thresholds use option probabilities; Jev's confidence measures how concentrated the distribution is,
+        # which is not the same as P(violates).
+        probabilities = a.get('probabilities') or {}
+        p_violates = probabilities.get('violates', 0)
+        p_not = sum(probabilities.get(k, 0) for k in NOT_VIOLATED)
+        decision = 'violates' if p_violates >= .90 else 'does_not_violate' if p_not >= .90 else 'unsure'
+        verdict.review = dict(verdict=decision, p=max(p_violates, p_not), choice=a.get('choice'),
+                              probabilities=probabilities, provider='typesafe',
+                              model=getattr(answer, 'model', decider.model), escalated=False)
+        if isinstance(answer, DecisionUnavailable):
+            warnings.append(f'{verdict.requirement_id}: Jev review unavailable: {answer}')
+        if decision == 'does_not_violate':
+            verdict.status, verdict.reason = 'unverified', 'link_disputed'
+        elif decision == 'unsure':
+            uncertain.append(index)
+    if client is not None and uncertain:
+        reviewed, extra = review_failures([output[i] for i in uncertain], catalogue,
+                                          EscalationClient(client), cache_dir=cache_dir)
+        warnings.extend(extra)
+        for index, verdict in zip(uncertain, reviewed):
+            metadata = output[index].review
+            verdict.review = {**metadata, **(verdict.review or {}), 'escalated': True}
+            output[index] = verdict
+    else:
+        for index in uncertain:
+            output[index].status, output[index].reason = 'unverified', 'unreviewed'
+    return output, warnings
