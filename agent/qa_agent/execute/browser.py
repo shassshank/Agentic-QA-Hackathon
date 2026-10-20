@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -14,12 +15,67 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from .evidence import EvidenceRecorder
 
 DESKTOP = {"width": 1280, "height": 800}
+QUIET_MS = 300
 # Generic busy signals: ARIA busy regions and live status regions announcing work in progress.
 _BUSY_JS = r"""() => {
   if (document.querySelector('[aria-busy="true"]')) return false;
-  const busy = /\b(loading|checking|submitting|saving|processing|entering|logging out)\b/i;
-  return ![...document.querySelectorAll('[role="status"]')].some(el => busy.test(el.textContent || ''));
+  // Short announcements that start with a busy verb or end in an ellipsis ("Loading accounts…").
+  // Long status regions (receipts, result counts) are content, even if they contain "Checking".
+  const busyStart = /^(loading|checking|submitting|saving|processing|entering|logging out|please wait|signing)\b/i;
+  const ellipsis = /(…|\.\.\.)$/;
+  return ![...document.querySelectorAll('[role="status"]')].some(el => {
+    const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
+    return text.length > 0 && text.length <= 80 && (busyStart.test(text) || ellipsis.test(text));
+  });
 }"""
+# Browser-clock timeline of API requests and feedback messages, so ordering claims ("success only after
+# commit", "loading state while waiting", "no duplicate submit") are judged on one clock.
+TIMELINE_JS = r"""(() => {
+  if (window.__qa) return;
+  const log = window.__qa = { events: [], inflight: 0, last: Date.now() };
+  const push = (e) => {
+    const t = Date.now();
+    if (e.kind === 'request') log.inflight++;
+    else if (e.kind === 'response' || e.kind === 'request-failed') log.inflight = Math.max(0, log.inflight - 1);
+    if (e.kind !== 'feedback') log.last = t;
+    log.events.push({ ...e, t });
+  };
+  const origFetch = window.fetch;
+  window.fetch = async (...args) => {
+    const req = args[0];
+    const url = String((req && req.url) || req);
+    const method = String((args[1] && args[1].method) || (req && req.method) || 'GET').toUpperCase();
+    push({ kind: 'request', url, method });
+    try {
+      const res = await origFetch(...args);
+      push({ kind: 'response', url, method, status: res.status });
+      return res;
+    } catch (err) {
+      push({ kind: 'request-failed', url, method });
+      throw err;
+    }
+  };
+  const origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    const m = String(method).toUpperCase(), u = String(url);
+    this.addEventListener('loadstart', () => push({ kind: 'request', url: u, method: m }));
+    this.addEventListener('loadend', () => push({ kind: 'response', url: u, method: m, status: this.status }));
+    return origOpen.call(this, method, url, ...rest);
+  };
+  const seen = new WeakMap();
+  const scan = () => {
+    for (const el of document.querySelectorAll('[role="alert"],[role="status"],[aria-live]')) {
+      const text = (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ');
+      if (text && seen.get(el) !== text) {
+        seen.set(el, text);
+        push({ kind: 'feedback', role: el.getAttribute('role') || 'live', text: text.slice(0, 300) });
+      }
+    }
+  };
+  const start = () => new MutationObserver(scan).observe(document.documentElement,
+    { subtree: true, childList: true, characterData: true });
+  if (document.documentElement) start(); else document.addEventListener('DOMContentLoaded', start);
+})();"""
 
 
 class ActionError(RuntimeError):
@@ -39,18 +95,32 @@ class ScenarioRun:
 
     # --- waiting -------------------------------------------------------------------------------
 
-    def settle(self, timeout_ms: int | None = None) -> bool:
-        """Wait for network quiet and no busy indicators. Returns False if the UI never settled."""
+    def settle(self, timeout_ms: int | None = None, quiet_ms: int = QUIET_MS) -> bool:
+        """Wait until no API request is in flight, nothing started for quiet_ms, and no busy indicator.
+
+        Playwright's "networkidle" load state only fires once per document, so after client-side
+        navigation it returns immediately; the in-page request counter covers SPA transitions. The quiet
+        window is measured from the call, giving click handlers and effects time to start their fetches.
+        """
         timeout = timeout_ms or self.timeout_ms
         try:
-            self.page.wait_for_load_state("networkidle", timeout=timeout)
-        except PlaywrightTimeout:
-            pass  # long-polling or slow API: fall through to the busy-indicator check
-        try:
-            self.page.wait_for_function(_BUSY_JS, timeout=timeout)
+            self.page.wait_for_function(
+                f"""([since, quiet]) => {{
+                  const q = window.__qa;
+                  if (!document.body) return false;
+                  if (q && (q.inflight > 0 || Date.now() - Math.max(q.last, since) < quiet)) return false;
+                  if (!q && Date.now() - since < quiet) return false;
+                  return ({_BUSY_JS})();
+                }}""",
+                arg=[int(time.time() * 1000), quiet_ms],
+                timeout=timeout,
+                polling=50,
+            )
             return True
         except PlaywrightTimeout:
             return False
+        except PlaywrightError:
+            return False  # page navigated mid-wait; callers re-check state explicitly
 
     # --- navigation ----------------------------------------------------------------------------
 
@@ -116,8 +186,53 @@ class ScenarioRun:
             value = option_value or ""
         self.recorder.step(self.page, "select", target=target, value=value, ok=True, shot=shot)
 
+    def submit(self, name: str | re.Pattern[str], *, shot: bool = False, settle: bool = True,
+               clicks: int = 1) -> None:
+        """Press a form's submit button by its accessible name, falling back to the form's submit control."""
+        target = f"button:{name if isinstance(name, str) else name.pattern}"
+        named = self.page.get_by_role("button", name=name)  # type: ignore[arg-type]
+        locator = named if named.count() else self.page.locator("form [type=submit]")
+        element = self._visible(locator, "submit", target)
+        if clicks > 1:
+            # Rapid repeated clicks without waiting: probes duplicate-submission handling.
+            for _ in range(clicks):
+                element.click(timeout=self.timeout_ms, force=True, no_wait_after=True)
+        else:
+            element.click(timeout=self.timeout_ms)
+        if settle:
+            self.settle()
+        self.recorder.step(self.page, "submit", target=target, value=f"clicks={clicks}" if clicks > 1 else None,
+                           ok=True, shot=shot)
+
     def shot(self, label: str) -> str | None:
         return self.recorder.screenshot(self.page, label)
+
+    # --- browser-side timeline -----------------------------------------------------------------
+
+    def timeline(self) -> list[dict]:
+        """Events since the last full page load (SPA navigation keeps them)."""
+        try:
+            return self.page.evaluate("() => (window.__qa && window.__qa.events) || []")
+        except PlaywrightError:
+            return []
+
+    def clear_timeline(self) -> None:
+        try:
+            self.page.evaluate("() => { if (window.__qa) window.__qa.events = []; }")
+        except PlaywrightError:
+            pass
+
+    def throttle(self, latency_ms: int) -> None:
+        """Add network latency (Chromium CDP) so transient loading states become observable."""
+        # Conditions belong to the CDP session that set them, so reuse one session to be able to lift them.
+        session = self.__dict__.get("_cdp")
+        if session is None:
+            session = self.__dict__["_cdp"] = self.page.context.new_cdp_session(self.page)
+            session.send("Network.enable")
+        session.send("Network.emulateNetworkConditions", {
+            "offline": False, "latency": latency_ms, "downloadThroughput": -1, "uploadThroughput": -1,
+        })
+        self.recorder.step(self.page, "throttle", value=f"{latency_ms}ms", ok=True)
 
     # --- composite -----------------------------------------------------------------------------
 
@@ -161,6 +276,7 @@ class Harness:
         assert self._browser is not None, "Harness must be entered before running scenarios"
         recorder = EvidenceRecorder(self.out_dir / scenario_id)
         context = self._browser.new_context(viewport=viewport or DESKTOP)
+        context.add_init_script(TIMELINE_JS)
         if self.trace:
             context.tracing.start(screenshots=True, snapshots=True)
         page = context.new_page()

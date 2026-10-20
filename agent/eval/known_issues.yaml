@@ -25,6 +25,15 @@ defects:
     observed: "start=end=2025-01-03 returns 0 rows; seed tx at 2025-01-03 09:00 PT only appears with end=2025-01-04"
     layer: api
 
+# Observed but not yet confirmed as a PRD violation (interpretation needed before scoring).
+candidates:
+  - id: KC-01
+    requirement: HIS row shows amount
+    prd: "Each row shows date and time, description or memo, transaction type, amount, status"
+    observed: "pending/failed rows render 'No change: $0.00' (per-account delta) instead of the transaction amount"
+    layer: ui
+    note: "defensible as 'balance effect'; decide after the oracle compares UI amount with API amount"
+
 # Behaviours observed to be CORRECT (an agent reporting these as failures is a false positive).
 correct:
   - "non-numeric amount 'abc' -> 422 invalid_amount"

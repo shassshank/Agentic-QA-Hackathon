@@ -139,5 +139,49 @@ def interpret_command(
     console.print(f"Wrote {out}")
 
 
+@app.command("probe")
+def probe_command(
+    url: str = typer.Option(None, help="Target URL (default: QA_TARGET_URL)."),
+    out: Path = typer.Option(None, help="Run directory (default: runs/<timestamp>)."),
+    only: list[str] = typer.Option(None, help="Probe id or prefix (repeatable), e.g. trf.reject or ses."),
+    skip_mutating: bool = typer.Option(False, help="Skip probes that move money."),
+    headed: bool = typer.Option(False, help="Show the browser."),
+    list_only: bool = typer.Option(False, "--list", help="List probes and exit."),
+) -> None:
+    """Run deterministic scenarios against the target and record observations (no LLM)."""
+    from datetime import datetime
+
+    from .plan import ProbeResult, run_probes, select_probes
+
+    probes = select_probes(only, skip_mutating)
+    if list_only:
+        table = Table(title=f"{len(probes)} probes")
+        for column in ("Id", "Area", "Kind", "Mutating", "Title"):
+            table.add_column(column)
+        for p in probes:
+            table.add_row(p.id, p.area.value, p.kind.value, "yes" if p.mutating else "", p.title)
+        console.print(table)
+        return
+
+    settings = load_settings()
+    target = (url or settings.target_url).rstrip("/")
+    run_dir = out or settings.runs_dir / datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir.mkdir(parents=True, exist_ok=True)
+    colours = {"completed": "green", "blocked": "yellow", "errored": "red"}
+
+    def report(result: ProbeResult) -> None:
+        detail = f" — {result.error.splitlines()[0]}" if result.error else ""
+        console.print(f"[{colours[result.status]}]{result.status:9}[/] {result.id:32} {result.duration_ms:6} ms{detail}")
+
+    results = run_probes(target, run_dir, only=only, skip_mutating=skip_mutating, headless=not headed,
+                         on_result=report)
+    restored = [r.facts.get("restore", {}).get("restored") for r in results if "restore" in r.facts]
+    console.print(f"{len(results)} probes: " + ", ".join(
+        f"{s}={sum(r.status == s for r in results)}" for s in ("completed", "blocked", "errored")))
+    if restored:
+        console.print(f"Net-zero restore: {sum(bool(x) for x in restored)}/{len(restored)} probes back at baseline")
+    console.print(f"Wrote {run_dir / 'observations.json'}")
+
+
 if __name__ == "__main__":
     app()

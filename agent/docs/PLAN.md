@@ -161,3 +161,13 @@ Jev is used during development for small routing and triage judgments (noted in 
   during P0, so every LLM call needs a request timeout, retry with backoff and the fallback chain.
 - agy cross-check model confirmed: `claude-opus-4-6-thinking`.
 - P0 done: local DemoBank (Postgres in Docker, uvicorn :8000, Vite :5173) and `qa-agent doctor` green.
+- P4 done (2026-10-20): `observe/` readers (test id first, then table headers / ARIA / labels) and
+  `plan/` probe library — 41 probes (SES 7, ACC 3, TRF 16, HIS 8, PRO 2, GEN 5), each normal / negative /
+  edge, no LLM. `qa-agent probe` writes `observations.json` + per-probe evidence (steps, screenshots, API
+  traffic, browser-clock timeline, trace). Full local run ≈ 3 min; 15/15 mutating probes restore balances.
+  - Harness fix: Playwright's `networkidle` fires once per document, so SPA transitions now settle on an
+    in-page in-flight request counter + quiet window; busy detection ignores long status regions (a
+    receipt mentioning "Everyday Checking" was read as "checking…").
+  - Facts already show (pending oracles): zero / negative / overdraft accepted with a success receipt,
+    single-day date ranges on transaction dates return nothing, pending/failed rows display $0.00.
+  - Restores create compensating records tagged with the run memo; history grows by those records.
