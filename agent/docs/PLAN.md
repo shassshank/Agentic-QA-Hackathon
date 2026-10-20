@@ -59,7 +59,7 @@ agent/
     cli.py            # qa-agent run --url --prd [--repo] [--out] [--provider] [--budget]
     config.py
     models.py         # Requirement, Scenario, Step, Observation, Evidence, Verdict, CostEntry
-    llm/              # provider interface, claude.py, alt provider, token meter, response cache
+    llm/              # provider interface, gemini.py (default), claude.py, token meter, response cache
     interpret/        # markdown → bullets → atomic requirements; coverage check
     plan/             # scenario templates, boundary-value generator, LLM scenario expansion
     explore/          # a11y-tree site map, semantic locator map (cached)
@@ -92,7 +92,7 @@ agent/
 
 - Low concurrency, no load testing, only the supplied app.
 - Mutating scenarios use small amounts and unique memos; compensating transfers keep the run net-zero.
-- No secrets in the repo; API keys via environment only.
+- No secrets in the repo; API keys live in `agent/.env` (gitignored), with `agent/.env.example` committed as the template.
 
 ### Cost strategy
 
@@ -135,5 +135,7 @@ Jev is used during development for small routing and triage judgments (noted in 
 ## 7. Open items
 
 - Hosted DemoBank URL (organizers).
-- ANTHROPIC_API_KEY (and the alternative provider's key) for runtime LLM calls.
-- Confirm agy model ids via `/agy:models` before the Opus 4.6 cross-check.
+- `GEMINI_API_KEY` in `agent/.env` (user supplies). `ANTHROPIC_API_KEY` only if the Claude comparison run is wanted.
+- Confirm exact Gemini API model ids against the API model list once the key is present (agy lists
+  Gemini 3.8 Flash high/medium/low; API names may differ).
+- agy cross-check model confirmed: `claude-opus-4-6-thinking`.
