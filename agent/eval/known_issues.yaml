@@ -1,0 +1,40 @@
+# DEV ONLY ground truth for scoring the agent against the LOCAL DemoBank build.
+# Never read by the agent at runtime. The hosted build may contain different defects.
+# Each entry was observed directly (see eval/probe_api.py), not inferred from source alone.
+# observed_on: 2026-10-20, local build from commit 5148ab6
+
+defects:
+  - id: KI-01
+    requirement: TRF amount validation (zero)
+    prd: "Amount must be a positive number greater than zero ... zero ... values must be rejected"
+    observed: "POST /api/transfers amount '0' and '0.00' -> 201, completed transfer recorded"
+    layer: api
+  - id: KI-02
+    requirement: TRF amount validation (negative)
+    prd: "negative ... values must be rejected"
+    observed: "amount '-5' -> 201; source gains and destination loses 5.00 (direction reversed)"
+    layer: api
+  - id: KI-03
+    requirement: TRF insufficient funds
+    prd: "The amount must not exceed the source account's available balance ... must be rejected"
+    observed: "amount '99999' from checking (4369.75) -> 201; checking balance becomes negative"
+    layer: api
+  - id: KI-04
+    requirement: HIS inclusive end date
+    prd: "The start and end dates are inclusive"
+    observed: "start=end=2025-01-03 returns 0 rows; seed tx at 2025-01-03 09:00 PT only appears with end=2025-01-04"
+    layer: api
+
+# Behaviours observed to be CORRECT (an agent reporting these as failures is a false positive).
+correct:
+  - "non-numeric amount 'abc' -> 422 invalid_amount"
+  - "over-precision amount '1.234' -> 422 invalid_amount"
+  - "same-account transfer -> 422 same_account, no record"
+  - "logout -> 204, then GET /api/me -> 401"
+
+# Still to establish at UI level during P3/P4 (UI may add or mask defects).
+pending_ui_checks:
+  - "blank amount rejected client-side with a message"
+  - "zero/negative/overdraft: does the UI show success? (expected: yes, given API behaviour)"
+  - "post-logout direct navigation and refresh of protected routes"
+  - "narrow-viewport usability, nav labels, duplicate-submit protection"
