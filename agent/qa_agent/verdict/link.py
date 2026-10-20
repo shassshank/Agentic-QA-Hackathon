@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from ..llm.base import LLMUnavailable
 from ..models import RequirementCatalogue, Testability
 from ..verify.models import Check
 from .models import Link, LinkResult
@@ -73,6 +74,10 @@ def link_requirements(catalogue, checks, client, *, cache_dir: Path) -> LinkResu
         return validate(LinkResult.model_validate_json(path.read_text()), catalogue, checks)
     response = client.generate(prompt, phase='link', tier='planner', thinking='low',
                                system=SYSTEM_PROMPT, schema=LinkResult)
+    # An unparseable or empty answer still "validates" because every field has a default; treat it as an
+    # outage (requirements become unverified) and never cache it, or every later run would reuse it.
+    if response.parsed is None or not LinkResult.model_validate(response.parsed).links:
+        raise LLMUnavailable(f'link response empty or not matching the schema ({response.model})')
     result = validate(LinkResult.model_validate(response.parsed), catalogue, checks)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(result.model_dump_json(indent=2))

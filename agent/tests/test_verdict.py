@@ -122,6 +122,14 @@ def test_judge_uncertainty_and_invalid_quotes(tmp_path, verdict, rationale):
     assert checked[0].needs_judge
 
 
+def test_empty_link_reply_raises_and_is_not_cached(tmp_path):
+    # A reply that misses the schema's wrapper still validates as an empty LinkResult (all defaults).
+    client = FakeClient(result=LinkResult())
+    with pytest.raises(LLMUnavailable):
+        link_requirements(catalogue(), [check()], client, cache_dir=tmp_path)
+    assert not list((tmp_path / 'link').glob('*.json')) if (tmp_path / 'link').exists() else True
+
+
 def test_fail_without_rerun_is_unconfirmed_not_blocked():
     c = check('fail')
     v = aggregate(catalogue(), links('full'), [c], {})[0]
