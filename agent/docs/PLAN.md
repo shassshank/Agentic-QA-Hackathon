@@ -135,7 +135,14 @@ Jev is used during development for small routing and triage judgments (noted in 
 ## 7. Open items
 
 - Hosted DemoBank URL (organizers).
-- `GEMINI_API_KEY` in `agent/.env` (user supplies). `ANTHROPIC_API_KEY` only if the Claude comparison run is wanted.
-- Confirm exact Gemini API model ids against the API model list once the key is present (agy lists
-  Gemini 3.8 Flash high/medium/low; API names may differ).
+- `ANTHROPIC_API_KEY` only if the Claude comparison run is wanted.
+- Pricing table for the cost report: confirm current per-token prices for the chosen Gemini models.
+
+## 8. Resolved
+
+- `GEMINI_API_KEY` present in `agent/.env`.
+- Gemini API model ids confirmed (2026-10-20): planner `gemini-3.8-flash`, fast `gemini-3.5-flash-lite`,
+  fallbacks `gemini-3.7-flash`, `gemini-3.5-flash`. `gemini-3.8-flash` returned 503 (high demand) or hung
+  during P0, so every LLM call needs a request timeout, retry with backoff and the fallback chain.
 - agy cross-check model confirmed: `claude-opus-4-6-thinking`.
+- P0 done: local DemoBank (Postgres in Docker, uvicorn :8000, Vite :5173) and `qa-agent doctor` green.
