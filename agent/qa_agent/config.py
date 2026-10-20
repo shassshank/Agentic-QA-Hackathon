@@ -21,7 +21,11 @@ class Settings(BaseModel):
     gemini_model_planner: str = "gemini-3.8-flash"
     gemini_model_fast: str = "gemini-3.5-flash-lite"
     # Tried in order when a model is overloaded (503) or rate limited (429).
-    gemini_model_fallbacks: list[str] = Field(default_factory=lambda: ["gemini-3.7-flash", "gemini-3.5-flash"])
+    gemini_model_fallbacks: list[str] = Field(
+        default_factory=lambda: [
+            "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-pro-preview",
+        ]
+    )
     anthropic_api_key: SecretStr | None = None
     target_url: str = "http://localhost:5173"
     runs_dir: Path = Field(default=AGENT_ROOT / "runs")

@@ -23,6 +23,20 @@ THINKING_LEVELS = {
 }
 # Planner calls produce long structured output with deep thinking; fast calls should be snappy.
 TIMEOUT_MS = {"planner": 240_000, "fast": 45_000}
+MAX_WAIT_SECONDS = 60
+
+
+def retry_delay_seconds(exc: errors.APIError) -> float | None:
+    """Read google.rpc.RetryInfo.retryDelay (e.g. '53540s') from an API error, if present."""
+    details = exc.details if isinstance(exc.details, dict) else {}
+    for detail in details.get("error", {}).get("details", []) or []:
+        if str(detail.get("@type", "")).endswith("RetryInfo"):
+            raw = str(detail.get("retryDelay", "")).rstrip("s")
+            try:
+                return float(raw)
+            except ValueError:
+                return None
+    return None
 
 
 class GeminiClient:
@@ -84,8 +98,17 @@ class GeminiClient:
                         model=model, contents=prompt, config=config
                     )
                 except errors.APIError as exc:
+                    if exc.code == 404:
+                        # Listed models can still be retired for this key; move on to the next one.
+                        failures.append(f"{model}: HTTP 404 (model unavailable)")
+                        break
                     if exc.code not in RETRYABLE_STATUS:
                         raise
+                    delay = retry_delay_seconds(exc)
+                    if delay is not None and delay > MAX_WAIT_SECONDS:
+                        # Quota exhausted for a long window (e.g. daily free-tier cap): retrying is futile.
+                        failures.append(f"{model}: HTTP {exc.code} (quota, retry in {int(delay)}s)")
+                        break
                     failures.append(f"{model}: HTTP {exc.code}")
                 except httpx.TimeoutException:
                     failures.append(f"{model}: timeout")

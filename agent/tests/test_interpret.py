@@ -120,6 +120,17 @@ def test_interpret_records_unrepaired_problems_as_warnings(tmp_path):
     assert catalogue.warnings == ["B02: not covered by any requirement and not excluded"]
 
 
+def test_validate_requires_judge_for_quality_wording():
+    bullets = [PrdBullet(id="B01", section="S", line=1, text="Rejected with a clear explanation.")]
+    plain = ExtractionResult(requirements=[_req("TRF-001", Area.TRF, ["B01"], "Rejected with")])
+    assert any("no requirement from it has a judge assertion" in p for p in validate(plain, bullets))
+    judged = ExtractionResult(requirements=[_req(
+        "TRF-001", Area.TRF, ["B01"], "clear explanation",
+        assertions=[Assertion(description="message explains why", oracle=OracleType.JUDGE)],
+    )])
+    assert validate(judged, bullets) == []
+
+
 @pytest.mark.parametrize("quote", ["Logging out returns", "logging OUT returns the user"])
 def test_quote_match_is_case_and_space_insensitive(quote):
     result = ExtractionResult(

@@ -9,10 +9,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..llm import LLMClient
-from ..models import Area, ExtractionResult, PrdBullet, RequirementCatalogue, Testability
+from ..models import Area, ExtractionResult, OracleType, PrdBullet, RequirementCatalogue, Testability
 from .prd import ParsedPrd, clean_inline, parse_prd
 
-PROMPT_VERSION = "interpret-v2"
+PROMPT_VERSION = "interpret-v3.1"
 
 SYSTEM_PROMPT = """You are a senior QA analyst. Convert a product requirements document into atomic,
 verifiable requirements for an automated browser-based QA agent.
@@ -20,7 +20,27 @@ verifiable requirements for an automated browser-based QA agent.
 Rules:
 - Each requirement states exactly one observable behavior. Split compound sentences: e.g. a bullet
   listing several invalid input classes yields one requirement per class, and a bullet listing several
-  filter dimensions yields one requirement per dimension plus one for combining them.
+  filter dimensions yields one requirement per dimension plus one for combining them. "Atomic" means
+  independently failable: if two parts of a sentence could fail separately (e.g. a record appears in a
+  list vs. the record shows the right fields; readable labels vs. loading/success states; showing a
+  loading state vs. preventing duplicate submission), they are separate requirements.
+- Validation rules have two sides: add an accept-path requirement or normal scenario for the smallest
+  and a typical valid input, not only rejection cases. Optional inputs need a scenario where the
+  action succeeds with the optional input left empty and the result handles its absence.
+- Prohibitions stated without a scope ("must not expose X") apply to the whole interface; say so in the
+  statement instead of narrowing it to one view.
+- Data-variety claims (e.g. "enough records to exercise account, type, status and date filters") get
+  one assertion per enumerated dimension.
+- Never assume a concrete presentation the PRD does not specify: masking characters, email mask
+  patterns, currency symbols, thousands separators or exact message text. Describe the observable
+  intent instead (e.g. "not all digits of the identifier are visible", "exactly two decimal places in
+  balance values, allowing currency symbols and separators").
+- Ordering claims ("report success only after commit") must be phrased as something observable at one
+  moment (e.g. "when the success indicator first appears, persisted balances and history already
+  reflect the transfer").
+- Filter requirements need assertions for both directions: every displayed row matches, and every
+  record that matches is displayed (compare against the unfiltered history), plus a check that the
+  filtered result is not empty when matching records exist.
 - Ids are AREA-NNN with areas SES (session/access), ACC (dashboard/accounts), TRF (transfers),
   HIS (transaction history), PRO (profile), GEN (general interface), SEED (seed data). Number from 001
   per area in PRD order.
@@ -28,8 +48,9 @@ Rules:
   one of those bullets (a contiguous excerpt, no paraphrase).
 - testability: "automated" when an objective check against visible UI state, URLs or browser network
   traffic can decide it; "judgement" when wording quality must be assessed (e.g. "clear explanation",
-  "readable labels"); "not_testable" when it cannot be observed from the running web app (e.g. backend
-  internals, absence of real payment rails).
+  "readable labels"); "not_testable" only when nothing about it can be observed from the running web
+  app. If part of it is observable (e.g. browser network traffic shows no calls to third-party payment
+  hosts, even though backend calls are invisible), use "automated" and state the limit in ambiguity.
   When a requirement mixes an objective part with a wording-quality part (e.g. "rejected with a clear
   explanation and must not alter balances"), keep testability "automated" and add a separate assertion
   with oracle "judge" for the wording.
@@ -49,6 +70,7 @@ Rules:
 """
 
 _ID = re.compile(r"^(SES|ACC|TRF|HIS|PRO|GEN|SEED)-\d{3}$")
+_QUALITY_WORDS = re.compile(r"\b(clear|clearly|readable|understandable)\b", re.I)
 
 
 def _sha256(*parts: str) -> str:
@@ -95,6 +117,19 @@ def validate(result: ExtractionResult, bullets: list[PrdBullet]) -> list[str]:
     for bullet in bullets:
         if bullet.id not in covered and bullet.id not in excluded:
             problems.append(f"{bullet.id}: not covered by any requirement and not excluded")
+    # Wording-quality language in the PRD must reach the judge; otherwise "clear explanation" silently
+    # degrades to "some message appeared".
+    judged = {
+        s for req in result.requirements
+        if any(a.oracle == OracleType.JUDGE for a in req.assertions) or req.testability == Testability.JUDGEMENT
+        for s in req.source_bullets
+    }
+    for bullet in bullets:
+        if bullet.id in covered and _QUALITY_WORDS.search(bullet.text) and bullet.id not in judged:
+            problems.append(
+                f"{bullet.id}: says {_QUALITY_WORDS.search(bullet.text).group(0)!r} but no requirement from it "
+                "has a judge assertion for that wording"
+            )
     return problems
 
 
