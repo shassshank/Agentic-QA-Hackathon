@@ -169,7 +169,7 @@ def cases():
                                   ('explained', ('attempt', 'feedback', 'alerts'), [])]:
             yield pid, rejection(), behaviour + '.' + suffix, path, bad
     for pid in ('trf.double_submit', 'trf.slow_submit'):
-        yield pid, transfer(), 'general.duplicate_submit.posts', ('attempt', 'posts'), [{'status': 201}] * 2
+        yield pid, transfer(), 'general.duplicate_submit.effects', ('after', 'rows'), []
         yield pid, transfer(), 'general.duplicate_submit.rows', ('after', 'rows'), []
     yield 'trf.slow_submit', transfer(), 'general.loading_state.submit', ('attempt', 'timeline', 1, 'text'), 'Ready'
     history = dict(accounts=[account(), account('Savings', '•••• 5678')], header={'customer': 'Demo'},
@@ -311,6 +311,19 @@ def test_route_dates_and_non_route_digits():
     assert selected('pro.no_secrets', facts, 'profile.no_secrets.digits').status == 'pass'
     facts['pages'][0]['attributes'].append('123456789')
     assert selected('pro.no_secrets', facts, 'profile.no_secrets.digits').status == 'fail'
+
+
+def test_duplicate_submit_judged_by_effect_not_request_count():
+    facts = transfer()
+    facts['attempt']['posts'] = [facts['attempt']['posts'][0]] * 2  # idempotent backend saw two POSTs
+    assert selected('trf.double_submit', facts, 'general.duplicate_submit.effects').status == 'pass'
+
+
+def test_atomic_requires_the_requested_amount():
+    facts = transfer()
+    for account in facts['after']['accounts']:
+        account['balance'] = next(a['balance'] for a in facts['before']['accounts'] if a['name'] == account['name'])
+    assert selected('trf.valid', facts, 'transfer.atomic.deltas').status == 'fail'  # no movement is not atomic
 
 
 def test_old_memo_rows_do_not_count_as_new():

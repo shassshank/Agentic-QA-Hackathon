@@ -2,7 +2,8 @@
 
 The link step can attach a family that touches the same data but tests a different behaviour (a date-filter
 check linked to "seed data spans several dates"). A confirmed check failure is real, but blaming the wrong
-requirement is a false fail. Only an explicit "does_not_violate" downgrades, and only to unverified.
+requirement is a false fail. A requirement is published FAILED only on an explicit "violates"; unsure, a missing
+answer or an unavailable reviewer leave it unverified (link_disputed / unreviewed), never failed and never passed.
 """
 from __future__ import annotations
 
@@ -29,9 +30,14 @@ def review_failures(verdicts: list[Verdict], catalogue, client, *, cache_dir: Pa
             continue
         req = requirements[verdict.requirement_id]
         failing = verdict.failure.get('checks') or [verdict.failure]
+        # Every failing check and the requirement's own assertions: the decision (and its cache key) must see all
+        # evidence that could change it, not the first few items.
         item = dict(requirement_id=req.id, requirement=f'{req.title}: {req.statement}',
-                    failing_observations=[dict(check=c.get('check_id'), expected=c.get('expected'),
-                                               observed=str(c.get('observed'))[:400]) for c in failing[:3]])
+                    assertions=[a.description for a in req.assertions],
+                    failing_observations=[dict(check=c.get('check_id'), probe=c.get('probe_id'),
+                                               expected=c.get('expected'), observed=str(c.get('observed'))[:600])
+                                          for c in failing[:12]],
+                    more_failing=max(0, len(failing) - 12))
         key = key_for(item, client.model_for('fast'), client.provider, SYSTEM_PROMPT, USER_TEMPLATE,
                       ReviewResult.model_json_schema())
         path = cache_dir / 'review' / f'{key}.json'
@@ -49,15 +55,29 @@ def review_failures(verdicts: list[Verdict], catalogue, client, *, cache_dir: Pa
             for index, item, path in pending:
                 review = by_id.get(item['requirement_id'])
                 if review is None:
-                    warnings.append(f"{item['requirement_id']}: failure review missing; kept failed")
+                    warnings.append(f"{item['requirement_id']}: failure review missing; left unverified")
                     continue
                 decided[index] = review.model_dump()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(decided[index]))
-        except Exception as exc:  # noqa: BLE001 - review is a safeguard; its outage keeps the original verdict
+        except Exception as exc:  # noqa: BLE001 - an outage leaves failures unverified (below)
             warnings.append(f'Failure review unavailable: {type(exc).__name__}: {exc}')
-    for index, review in decided.items():
-        output[index].review = review
-        if review['verdict'] == 'does_not_violate':
-            output[index].status, output[index].reason = 'unverified', 'link_disputed'
+    for index, verdict in enumerate(output):
+        if verdict.status != 'failed' or not verdict.failure:
+            continue
+        review = decided.get(index)
+        verdict.review = review
+        if review is None:
+            verdict.status, verdict.reason = 'unverified', 'unreviewed'
+        elif review['verdict'] != 'violates':
+            verdict.status, verdict.reason = 'unverified', 'link_disputed'
     return output, warnings
+
+
+def mark_unreviewed(verdicts: list[Verdict]) -> list[Verdict]:
+    """Without a reviewer (offline, --no-judge) a confirmed check failure is not yet a requirement failure."""
+    output = [v.model_copy(deep=True) for v in verdicts]
+    for verdict in output:
+        if verdict.status == 'failed':
+            verdict.status, verdict.reason = 'unverified', 'unreviewed'
+    return output

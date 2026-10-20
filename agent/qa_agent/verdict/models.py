@@ -8,12 +8,18 @@ Coverage = Literal['full', 'partial', 'none']
 Confirmation = Literal['confirmed', 'flaky', 'unconfirmed']
 Reason = Literal['not_testable', 'no_linked_checks', 'partial_coverage', 'checks_unknown',
                  'needs_judgement', 'flaky', 'unconfirmed', 'probe_blocked', 'concurrent_activity',
-                 'llm_unavailable', 'link_disputed']
+                 'llm_unavailable', 'link_disputed', 'unreviewed']
+
+
+class AssertionLink(BaseModel):
+    index: int  # position in the requirement's assertions list (0-based)
+    families: list[str] = Field(default_factory=list)
 
 
 class Link(BaseModel):
     requirement_id: str
     families: list[str] = Field(default_factory=list)
+    assertions: list[AssertionLink] = Field(default_factory=list)
     coverage: Coverage = 'none'
     rationale: str = ''
 

@@ -63,10 +63,13 @@ def evaluate(b: Builder) -> None:
         b.add(behaviour, 'balances', delta == expected if readable and amount is not None
               and source in bb and dest in bb else None, 'source -amount, destination +amount, others unchanged',
               {'expected': expected, 'deltas': delta}, sensitive=True)
-    b.add('transfer.atomic', 'deltas', delta[source] == -delta[dest] and
+    # Both sides must move by exactly the requested amount: equal-and-opposite alone also holds for no movement
+    # or for a wrong amount. (Intermediate partial states are not observable here; that part stays unclaimed.)
+    b.add('transfer.atomic', 'deltas', amount is not None and delta[source] == -amount and delta[dest] == amount and
           all(v == 0 for k, v in delta.items() if k not in (source, dest))
           if readable and source in delta and dest in delta else None,
-          'equal and opposite deltas, others unchanged', delta, sensitive=True)
+          'source -amount and destination +amount together, others unchanged',
+          {'amount': amount, 'deltas': delta}, sensitive=True)
     b.add('transfer.record', 'count', len(matching) == 1 if 'rows' in before and 'rows' in after else None,
           'exactly one new attempt row', [key(r) for r in matching], sensitive=True)
     for i, row in enumerate(matching or rows):
@@ -91,11 +94,18 @@ def evaluate(b: Builder) -> None:
               'empty memo accepted with non-empty row description', matching, sensitive=True)
     timeline = attempt.get('timeline')
     if timeline is not None:
+        # Correlate with this attempt's own committed POST, and require that the first read after the success
+        # message already shows the transfer persisted (balances moved by the amount).
+        ours = {p.get('url') for p in posts if 200 <= (p.get('status') or 0) < 300}
         responses = [e['t'] for e in timeline if e.get('kind') == 'response' and e.get('method') == 'POST'
-                     and 200 <= (e.get('status') or 0) < 300]
+                     and e.get('url') in ours and 200 <= (e.get('status') or 0) < 300]
         successes = [e['t'] for e in timeline if e.get('kind') == 'feedback' and success_text(e.get('text', ''))]
-        b.add('transfer.success_after_commit', 'timeline', bool(responses and successes) and min(successes) >= min(responses),
-              'first success at or after 2xx POST response', {'responses': responses, 'successes': successes})
+        persisted = (delta.get(source) == -amount and delta.get(dest) == amount) if readable and amount is not None else None
+        ordered = bool(responses and successes) and min(successes) >= min(responses)
+        b.add('transfer.success_after_commit', 'timeline',
+              None if persisted is None and ordered else ordered and bool(persisted),
+              'first success after this attempt\'s 2xx response, and the next read shows balances updated',
+              {'responses': responses, 'successes': successes, 'persisted_in_next_read': persisted}, sensitive=True)
     else:
         b.add('transfer.success_after_commit', 'timeline', None, 'success follows commit', None)
     if 'after_reload' in f:
@@ -106,8 +116,11 @@ def evaluate(b: Builder) -> None:
         b.add('transfer.refresh_persists', 'record', bool(memo and any(memo in text(r) for r in reload.get('rows', [])))
               if 'rows' in reload and memo else None, 'memo row survives reload', reload.get('memo_rows'), sensitive=True)
     if pid in ('trf.double_submit', 'trf.slow_submit'):
-        b.add('general.duplicate_submit', 'posts', len(posts) <= 1 if 'posts' in attempt else None,
-              'at most one POST', len(posts))
+        # Judged by effect, not request count: an idempotent backend may receive several POSTs and still apply one.
+        b.add('general.duplicate_submit', 'effects', len(matching) == 1 and delta.get(source) == -amount
+              and delta.get(dest) == amount if readable and amount is not None and 'rows' in after else None,
+              'one transfer applied (one new row, balances moved once)',
+              {'posts': len(posts), 'new_rows': len(matching), 'deltas': delta}, sensitive=True)
         b.add('general.duplicate_submit', 'rows', len(matching) == 1 if 'rows' in after else None,
               'exactly one new memo row', [key(r) for r in matching], sensitive=True)
     if pid == 'trf.slow_submit':

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from .link import key_for
 from .models import JudgeResult, Judgement
@@ -12,13 +13,31 @@ Each rationale must be at most 25 words and quote the exact visible text it reli
 USER_TEMPLATE = 'Judge these items:\n{items}'
 
 
+def visible_strings(value) -> list[str]:
+    """String values only: dict keys are structure, not text a user saw."""
+    if isinstance(value, dict):
+        return [s for v in value.values() for s in visible_strings(v)]
+    if isinstance(value, list):
+        return [s for v in value for s in visible_strings(v)]
+    return [value] if isinstance(value, str) else []
+
+
+def quote_supported(rationale: str, visible) -> bool:
+    """The rationale must quote (≥ 3 chars) something that was actually on screen."""
+    texts = visible_strings(visible)
+    quotes = [a or b for a, b in re.findall(r'"([^"\n]+)"|“([^”\n]+)”', rationale)]
+    return any(len(q.strip()) >= 3 and any(q in t for t in texts) for q in quotes)
+
+
 def judge_checks(checks, client, *, cache_dir: Path, token_budget: int = 12000):
     output = [c.model_copy(deep=True) for c in checks]
     pending = []
     decisions = {}
     warnings = []
     for index, check in enumerate(output):
-        if not check.needs_judge or check.status == 'fail':
+        # Judge only checks whose sole uncertainty is wording. A check made unknown by interference, a blocked
+        # probe or missing data must keep that reason; a wording verdict cannot repair invalid evidence.
+        if not check.needs_judge or check.status != 'unknown' or not (check.reason or '').startswith('wording'):
             continue
         data = check.judge_input or {}
         item = dict(item_id=str(index), criterion=data.get('criterion', check.expected),
@@ -58,10 +77,7 @@ def judge_checks(checks, client, *, cache_dir: Path, token_budget: int = 12000):
                 if len(found) != 1:
                     continue
                 decision = found[0]
-                text = str(item['visible_text'])
-                import re
-                quotes = re.findall(r'"([^"\n]+)"|“([^”\n]+)”', decision.rationale)
-                if len(decision.rationale.split()) > 25 or not any((a or b) in text for a, b in quotes):
+                if len(decision.rationale.split()) > 25 or not quote_supported(decision.rationale, item['visible_text']):
                     warnings.append(f'{output[index].id}: invalid judge rationale; kept unknown')
                     continue
                 decisions[index] = decision

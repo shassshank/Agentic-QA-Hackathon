@@ -8,7 +8,7 @@ from pathlib import Path
 from ..llm.base import LLMUnavailable
 from ..models import RequirementCatalogue, Testability
 from ..verify.models import Check
-from .models import Link, LinkResult
+from .models import AssertionLink, Link, LinkResult
 
 SYSTEM_PROMPT = '''You are a QA coverage analyst. Link every requirement exactly once to the supplied check families.
 Use only supplied family tags, optionally followed by a check-id suffix filter from that family's suffixes,
@@ -17,7 +17,9 @@ A linked family must test the behaviour the requirement states, not merely touch
 about what seed data exists links to families that inspect the data, not to families that test a filter.
 Requirements about wording or clarity link to families with has_judge true (their judge suffixes); they are not
 unlinkable because they need judgement.
-Use full only when the checks cover every assertion; otherwise partial or none. Do not infer observed outcomes.
+For every requirement also list, per assertion (index = position in its assertions list, 0-based), the families
+that test that assertion; leave an assertion's families empty when no family tests it. Coverage is recomputed
+from that mapping, so claim full only if every assertion has a family. Do not infer observed outcomes.
 Not-testable requirements have no families and coverage none. Give a one-line rationale. Return schema JSON.'''
 USER_TEMPLATE = 'Requirements:\n{requirements}\n\nCheck families (examples contain only id and expected):\n{families}'
 
@@ -47,22 +49,38 @@ def family_catalogue(checks: list[Check]) -> dict:
 
 def validate(result: LinkResult, catalogue: RequirementCatalogue, checks: list[Check]) -> LinkResult:
     warnings = list(result.warnings)
-    known = {r.id for r in catalogue.requirements}
+    requirements = {r.id: r for r in catalogue.requirements}
+    known = set(requirements)
     by_id = {}
     for link in result.links:
         if link.requirement_id not in known or link.requirement_id in by_id:
             warnings.append(f'{link.requirement_id}: unknown or duplicate requirement dropped')
             continue
-        families = []
-        dropped = False
-        for family in dict.fromkeys(link.families):
-            if any(matches(c, family) for c in checks):
-                families.append(family)
-            else:
-                warnings.append(f'{link.requirement_id}: unknown family {family} dropped')
-                dropped = True
+        def valid(names: list[str], rid: str = link.requirement_id) -> list[str]:
+            kept = []
+            for family in dict.fromkeys(names):
+                if any(matches(c, family) for c in checks):
+                    kept.append(family)
+                else:
+                    warnings.append(f'{rid}: unknown family {family} dropped')
+            return kept
+
+        req = requirements[link.requirement_id]
+        per_assertion: dict[int, list[str]] = {}
+        for a in link.assertions:
+            if 0 <= a.index < len(req.assertions):
+                per_assertion.setdefault(a.index, []).extend(valid(a.families))
+        families = list(dict.fromkeys(valid(link.families) + [f for fs in per_assertion.values() for f in fs]))
+        # Coverage is never taken on the model's word: "full" needs every assertion mapped to an existing family.
+        mapped = sum(1 for i in range(len(req.assertions)) if per_assertion.get(i))
+        computed = ('none' if not families else
+                    'full' if req.assertions and mapped == len(req.assertions) else 'partial')
+        coverage = min(computed, link.coverage, key=('none', 'partial', 'full').index)
+        if families and coverage == 'none':
+            coverage = 'partial'
         by_id[link.requirement_id] = link.model_copy(update={
-            'families': families, 'coverage': 'none' if not families else 'partial' if dropped else link.coverage})
+            'families': families, 'coverage': coverage,
+            'assertions': [AssertionLink(index=i, families=fs) for i, fs in sorted(per_assertion.items())]})
     links = []
     for req in catalogue.requirements:
         link = by_id.get(req.id)

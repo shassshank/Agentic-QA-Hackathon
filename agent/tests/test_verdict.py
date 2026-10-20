@@ -16,7 +16,7 @@ from qa_agent.verdict.aggregate import aggregate
 from qa_agent.verdict.confirm import confirm_failures
 from qa_agent.verdict.judge import judge_checks
 from qa_agent.verdict.link import link_requirements, validate, matches
-from qa_agent.verdict.models import Link, LinkResult, JudgeResult, Judgement
+from qa_agent.verdict.models import AssertionLink, Link, LinkResult, JudgeResult, Judgement
 from qa_agent.verdict.run import run_verdict
 
 
@@ -36,13 +36,42 @@ def check(status='pass', **updates):
     fields = dict(id='general.labels.readable', behaviour='general.labels', area='GEN', title='Controls',
                   status=status, reason=None if status == 'pass' else 'missing evidence', expected='Readable labels',
                   observed='Send', probe_id='gen.labels')
+    if updates.get('needs_judge') and status == 'unknown' and 'reason' not in updates:
+        fields['reason'] = 'wording quality requires judge'  # what verify.Builder.judge sets
     fields.update(updates)
     return Check(**fields)
 
 
+def test_judge_never_clears_provenance_unknowns(tmp_path):
+    client = FakeClient()
+    blocked = check('unknown', needs_judge=True, reason='concurrent activity')
+    checked, _ = judge_checks([blocked], client, cache_dir=tmp_path)
+    assert (checked[0].status, checked[0].reason) == ('unknown', 'concurrent activity') and not client.calls
+
+
+def test_judge_quote_must_be_visible_text_not_a_key():
+    from qa_agent.verdict.judge import quote_supported
+
+    visible = {'amount_text': '$100', 'type': 'Transfer'}
+    assert not quote_supported('"type" shows direction', visible)
+    assert not quote_supported('"$1" is enough', {'t': '$1'})  # too short to be evidence
+    assert quote_supported('"Transfer" row shows "$100"', visible)
+
+
 def links(coverage='full', families=None):
-    return LinkResult(links=[Link(requirement_id='GEN-001', families=families or ['general.labels'],
-                                 coverage=coverage)])
+    families = families or ['general.labels']
+    return LinkResult(links=[Link(requirement_id='GEN-001', families=families, coverage=coverage,
+                                 assertions=[AssertionLink(index=0, families=families)])])
+
+
+def test_full_coverage_claim_without_assertion_mapping_is_downgraded():
+    claimed = LinkResult(links=[Link(requirement_id='GEN-001', families=['general.labels'], coverage='full')])
+    assert validate(claimed, catalogue(), [check()]).links[0].coverage == 'partial'
+    two = catalogue(assertions=[dict(description='a', oracle='judge'), dict(description='b', oracle='ui_text')])
+    half = LinkResult(links=[Link(requirement_id='GEN-001', coverage='full', families=['general.labels'],
+                                  assertions=[AssertionLink(index=0, families=['general.labels'])])])
+    assert validate(half, two, [check()]).links[0].coverage == 'partial'
+    assert validate(links(), catalogue(), [check()]).links[0].coverage == 'full'
 
 
 class FakeClient:
@@ -125,7 +154,7 @@ def test_judge_uncertainty_and_invalid_quotes(tmp_path, verdict, rationale):
 @pytest.mark.parametrize('answer,status,reason', [
     ('does_not_violate', 'unverified', 'link_disputed'),
     ('violates', 'failed', None),
-    ('unsure', 'failed', None),
+    ('unsure', 'unverified', 'link_disputed'),
 ])
 def test_failure_review(tmp_path, answer, status, reason):
     from qa_agent.verdict.models import Review, ReviewResult
@@ -140,13 +169,14 @@ def test_failure_review(tmp_path, answer, status, reason):
     assert again[0].status == status  # cached decision reused, no call needed
 
 
-def test_failure_review_outage_keeps_failed(tmp_path):
-    from qa_agent.verdict.review import review_failures
+def test_failure_review_outage_leaves_unverified(tmp_path):
+    from qa_agent.verdict.review import mark_unreviewed, review_failures
 
     c = check('fail')
     failed = aggregate(catalogue(), links('full'), [c], {(c.probe_id, c.id): 'confirmed'})
     reviewed, warnings = review_failures(failed, catalogue(), FakeClient(fail=True), cache_dir=tmp_path)
-    assert reviewed[0].status == 'failed' and warnings
+    assert (reviewed[0].status, reviewed[0].reason) == ('unverified', 'unreviewed') and warnings
+    assert mark_unreviewed(failed)[0].reason == 'unreviewed'  # --no-judge / no client path
 
 
 def test_empty_link_reply_raises_and_is_not_cached(tmp_path):
