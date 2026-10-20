@@ -171,3 +171,14 @@ Jev is used during development for small routing and triage judgments (noted in 
   - Facts already show (pending oracles): zero / negative / overdraft accepted with a success receipt,
     single-day date ranges on transaction dates return nothing, pending/failed rows display $0.00.
   - Restores create compensating records tagged with the run memo; history grows by those records.
+- P5 done (2026-10-20): `verify/` oracles per `docs/P5_ORACLES.md` (codex implementation, reviewed):
+  `qa-agent verify --run runs/<run>` → `checks.json`. Reference run: 571 checks over 41 probes —
+  505 pass, 29 fail, 37 unknown (35 wording-quality items queued for the P6 judge).
+  - Review fixes: row-level history checks run once where history is the subject (were repeated in
+    every probe's snapshots: 46 duplicate fails); UUID record ids are reported as an interpretation
+    question (unknown), not as exposed account numbers.
+  - Remaining fails are app behaviour: zero / 0.00 / negative / over-balance amounts accepted with a
+    success receipt; inclusive end date not honoured (single-day and end-bounded ranges); pending and
+    failed rows show $0.00 instead of the transaction amount.
+  - Known limitation: `verify/util.content()` assumes route names (/dashboard, /transfer, /profile) for
+    "content present" checks; P7 should take paths from the probe's discovered navigation.

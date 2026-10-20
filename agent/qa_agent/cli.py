@@ -183,5 +183,43 @@ def probe_command(
     console.print(f"Wrote {run_dir / 'observations.json'}")
 
 
+@app.command("verify")
+def verify_command(
+    run: Path = typer.Option(..., exists=True, file_okay=False, help="Recorded run directory."),
+) -> None:
+    """Evaluate recorded facts without driving the app or calling a model."""
+    import json
+    from collections import Counter
+
+    from .verify import evaluate
+
+    observations = json.loads((run / "observations.json").read_text())
+    for probe in observations.get("results", []):
+        evidence_path = run / "evidence" / probe["id"] / "evidence.json"
+        if evidence_path.exists():
+            bundle = json.loads(evidence_path.read_text())
+            reference = f"evidence/{probe['id']}/evidence.json"
+            probe["_evidence"] = {
+                "screenshots": sorted({step["screenshot"] for step in bundle.get("steps", [])
+                                       if step.get("screenshot")}),
+                "steps": [f"{reference}#/steps/{i}" for i, _ in enumerate(bundle.get("steps", []))],
+                "network": [f"{reference}#/network/{i}" for i, _ in enumerate(bundle.get("network", []))],
+            }
+    report = evaluate(observations)
+    output = run / "checks.json"
+    output.write_text(report.model_dump_json(indent=2))
+    table = Table(title="Oracle checks")
+    for column in ("Area", "Pass", "Fail", "Unknown"):
+        table.add_column(column)
+    for area in sorted({c.area for c in report.checks}):
+        counts = Counter(c.status for c in report.checks if c.area == area)
+        table.add_row(area, *(str(counts[s]) for s in ("pass", "fail", "unknown")))
+    console.print(table)
+    for check in report.checks:
+        if check.status == "fail":
+            console.print(f"FAIL {check.probe_id} / {check.id}: {check.reason}", markup=False)
+    console.print(f"Wrote {output}")
+
+
 if __name__ == "__main__":
     app()
