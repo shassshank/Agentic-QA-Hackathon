@@ -182,3 +182,13 @@ Jev is used during development for small routing and triage judgments (noted in 
     failed rows show $0.00 instead of the transaction amount.
   - Known limitation: `verify/util.content()` assumes route names (/dashboard, /transfer, /profile) for
     "content present" checks; P7 should take paths from the probe's discovered navigation.
+- P6 built (2026-10-20): `verdict/` per `docs/P6_VERDICTS.md` (codex implementation, reviewed) — LLM link
+  (cached), batched judge (cached), confirmation re-runs, conservative aggregation; `qa-agent verdict`
+  and `qa-agent run`. Review fix: a fail never re-run is `unconfirmed`, not `probe_blocked`.
+  - Verified live without LLM (hand-written dev link file, no judge): 67 requirements → 41 passed,
+    7 failed, 19 unverified; all 7 fails reproduced on fresh re-runs and match the dev-only known issues
+    (zero, negative, over-balance, exclusive end date); balances restored after the re-runs.
+  - Verified LLM outage path: all models over quota → every requirement unverified (llm_unavailable),
+    no crash, no pass.
+  - Pending: live link + judge calls (free-tier quota exhausted until reset); P8 should render steps in
+    plain words (they currently show selector patterns).
