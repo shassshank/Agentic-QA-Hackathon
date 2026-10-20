@@ -64,7 +64,10 @@ def evaluate(b: Builder) -> None:
                 missing.append(observed)
             elif abs(ui) != abs(amount):
                 mismatches.append(observed)
-            if (row.get('status') or '').lower() == 'completed' and (row.get('type') or '').lower() in ('deposit', 'withdrawal'):
+            # The PRD names deposits, withdrawals and transfers; transfers need a judged direction too (from/to or
+            # signed per-account amounts), otherwise "direction is clear" would pass on two of three types.
+            if (row.get('status') or '').lower() == 'completed' and (row.get('type') or '').lower() in (
+                    'deposit', 'withdrawal', 'transfer'):
                 # Suffix by transaction id, not row position, so ids stay stable as history grows between runs.
                 b.judge('history.amount_direction', f'{name}.{(row.get("id") or str(i))[-12:]}', {
                         'amount_text': row.get('amount_text'),
@@ -116,13 +119,27 @@ def evaluate(b: Builder) -> None:
               reason=f'row set mismatch for {context}' if ok is False else None, sensitive=True)
     if pid == 'his.filter.combined':
         seed, app = f.get('seed_row', {}), f.get('application', {})
+        dates = f.get('dates') or {}
+        start = date.fromisoformat(dates['start']) if dates.get('start') else None
+        end = date.fromisoformat(dates['end']) if dates.get('end') else None
+
+        def in_range(r: dict) -> bool:
+            if not dates:
+                return True
+            day = observed_date(r.get('occurred_at'), dates.get('zone') or 'UTC')
+            return day is not None and (start is None or day >= start) and (end is None or day <= end)
+
         expected = [r for r in baseline or [] if (r.get('type') or '').casefold() == (seed.get('type') or '').casefold()
                     and (r.get('status') or '').casefold() == (seed.get('status') or '').casefold()
-                    and account_matches(seed.get('account') or '', r.get('account') or '')]
+                    and account_matches(seed.get('account') or '', r.get('account') or '') and in_range(r)]
         b.add('history.filter.combined', 'set', bool(expected) and keys(app['rows']) == keys(expected)
               if baseline is not None and seed and 'rows' in app else None,
-              'non-empty baseline intersection of account/type/status', {'expected': sorted(keys(expected)),
-              'actual': sorted(keys(app.get('rows', [])))}, sensitive=True)
+              'non-empty baseline intersection of account/type/status' + ('/date range' if dates else ''),
+              {'expected': sorted(keys(expected)), 'actual': sorted(keys(app.get('rows', []))), 'dates': dates},
+              sensitive=True)
+        # Without the date dimension the combination test is incomplete; say so instead of implying coverage.
+        b.add('history.filter.combined', 'dimensions', bool(dates) if seed else None,
+              'account, type, status and date range applied together', {'dates': dates})
     if pid == 'his.empty':
         a = f.get('application', {})
         b.add('history.empty_state', 'view', not a['rows'] and bool(a.get('empty_text')) and

@@ -7,6 +7,7 @@ expected outcome is encoded here. Each probe records facts; oracles decide.
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -563,8 +564,15 @@ def his_filter_combined(ctx: ProbeContext) -> None:
     else:
         raise ProbeBlocked("no row whose account, type and status all map to filter options")
     ctx.fact("seed_row", row)
-    ctx.fact("application", _apply_filters(run, {F_ACCOUNT: acc.value, F_TYPE: typ.value, F_STATUS: sta.value},
-                                           shot=True))
+    # Add a date range around the seed row (day before → day after) so the combination covers all four filter
+    # dimensions without depending on boundary inclusivity, which his.filter.dates tests separately.
+    zone, basis = _timezone(run, rows)
+    day = local_date(row.get("occurred_at"), zone)
+    values = {F_ACCOUNT: acc.value, F_TYPE: typ.value, F_STATUS: sta.value}
+    if day is not None:
+        values.update({F_START: (day - timedelta(days=1)).isoformat(), F_END: (day + timedelta(days=1)).isoformat()})
+        ctx.fact("dates", {"start": values[F_START], "end": values[F_END], "zone": zone, "basis": basis})
+    ctx.fact("application", _apply_filters(run, values, shot=True))
 
 
 @probe("his.empty", Area.HIS, EDGE, "Filters that match nothing show an empty state; clearing restores",
