@@ -22,6 +22,7 @@ Judging weights: accuracy 30, rigor 25, cost 20, resilience 15, evidence 10.
 |---|---|
 | Language | Python 3.12 (uv-managed), Playwright for Python, Pydantic v2, pytest |
 | LLM | Pluggable provider interface; **Gemini default** (Gemini Flash at higher reasoning for one-time interpretation/planning, Flash at low reasoning for recovery/judge calls, context caching). Claude is the alternative provider for cost comparison. Keys and model ids come from `agent/.env` (`GEMINI_API_KEY`). |
+| Decisions | **Jev (TypeSafe System One) is the default for small typed decisions**: wording judge, failure review, requirement→check linking, locator-heal fallback. Gemini stays for generation (PRD interpretation) and as the escalation path for low-confidence Jev answers. Key from `agent/.env` (`TYPESAFE_API_KEY`). See §4 "Decision layer". |
 | Target during development | Local DemoBank (`test-website/LOCAL_SETUP.md`); hosted URL plugged in when organizers provide it |
 | Repo | git at kit root; agent lives in `agent/`; target app untouched |
 | Git policy | Local commits only; push / PR only on explicit per-request approval |
@@ -99,6 +100,40 @@ agent/
 Interpretation and plan are cached by input hash, so repeat runs spend tokens only on recovery and
 judge calls. Every LLM call is metered per phase and reported. Target: cents per full run.
 
+### Decision layer (Jev)
+
+Jev returns typed answers and probabilities (noul = P(yes), choice = option + distribution) instead of
+generated text. It is priced at $0.042 per million input tokens with free output (docs, 2026-10-20),
+answers in roughly 70–500 ms and has its own quota, so it removes most calls from the 20-requests/day Gemini
+free tier. Policy: **code decides what is computable, Jev decides narrow semantic questions, Gemini handles
+generation and the uncertain band, and anything still uncertain stays unknown/unverified** (never a guess).
+
+| Call site | Today | Jev question | Accept | Otherwise |
+|---|---|---|---|---|
+| Wording judge (`verdict/judge.py`) | Gemini fast, rationale must quote visible text | One narrow **noul** per condition over the check's visible strings (e.g. "does the message say what is wrong or how to fix it", "does `amount_text` alone show in/out"). Sign-vs-type and other computable parts stay in code. | p ≥ 0.85 → pass; p ≤ 0.15 → fail (still goes through confirm + failure review) | escalate to Gemini judge; no LLM → unknown |
+| Failure review (`verdict/review.py`) | Gemini fast: violates / consistent / unsure | **choice** {violates, consistent, unsure} per failing check, state = requirement assertions + check expected/observed/reason | `violates` with p ≥ 0.90 keeps FAILED; `consistent` with p ≥ 0.90 → `link_disputed` | escalate to Gemini review; none → `unreviewed` |
+| Linking (`verdict/link.py`) | One Gemini planner call | **choice** per assertion over the family catalogue (≤ 255 options) plus `none` | confidence ≥ 0.80 and family exists | only the uncertain requirements go to the Gemini link call; coverage still computed per assertion |
+| Heal fallback (`recover/heal.py`) | optional Gemini, confidence ≥ 0.85 | **choice** over snapshot candidates plus `none`, after deterministic Jaccard matching | p ≥ 0.85 and not `none` | block with reason (no submit replay, unchanged) |
+| Interpret (`interpret/`) | Gemini planner, cached | not replaced (needs generation); optional **noul** citation check "does the source quote support this requirement" to flag invented requirements | p ≥ 0.5 | flag in the catalogue review |
+
+Implementation notes:
+- `qa_agent/llm/typesafe.py`: thin `DecisionClient` (`noul`, `choice`, batched over items) over
+  `POST https://api.typesafe.ai/v1/systemone` (or `typesafe-sdk`), request timeout, retry on 429/529 with
+  backoff, `DecisionUnavailable` on outage. Separate protocol from `LLMClient` because it never generates text.
+- Model pinned (`jev-1.13.0`, the `jev-latest` alias) for reproducible verdicts; `jev-1.14.0` (preview) is
+  evaluated in P9 before switching.
+- Cache key = model + question text + criteria + state, same disk cache as other phases; probabilities and
+  thresholds are stored in the verdict evidence so a reader can see why a check passed or escalated.
+- Meter: provider `typesafe`, input tokens × $0.042/Mtok, output $0; shown as its own row in the cost table
+  next to Gemini so the report shows the saving.
+- Questions follow the Jev guidance: one narrow condition each, raw observed evidence as state (never our
+  verdict), boundary cases in criteria, a `none`/`unsure` option where nothing may fit.
+
+Trial on real P7 run data (2026-10-20, `runs/p7b-base`, 9 items): broad "is this clear" noul ranked the
+real messages and obvious bad controls correctly but missed two (rejected a valid "Enter an amount" hint at
+0.02, accepted a bare `$300.00` withdrawal at 0.76). Narrow per-condition nouls fixed both (0.65 → escalation
+band, 0.07 → fail). ~440 input tokens per item ≈ $0.00002. Hence narrow questions + thresholds + escalation.
+
 ## 5. Reference requirement catalogue (draft)
 
 The agent derives its own catalogue at runtime; this hand-written list is used to review its output
@@ -126,8 +161,9 @@ and to score coverage.
 | P5 | Oracles, ledger, date/timezone logic | codex | Oracle unit tests green |
 | P6 | Verdict engine + confirmation re-runs | codex, then codex adversarial review | No false fails on the fixed variant |
 | P7 | Self-healing + recovery + chaos tests | codex | Passes on mutated-label and slow-network variants |
+| P7J | Jev decision layer (§4): `DecisionClient`, judge/review/link/heal on Jev with Gemini escalation, cost meter row, unit tests with a fake client | codex (⚡ Jev routing: codex, confidence 1.0) | Full run with Gemini disabled still reaches verdicts for judge/review/link; same verdicts as the Gemini run on `runs/p5-base` except documented escalations; Jev cost row in ledger |
 | P8 | HTML audit report design | agy (Gemini default) | Self-contained report renders with evidence |
-| P9 | Eval harness: shipped / fixed / mutant variants, precision-recall | codex | Metrics table generated |
+| P9 | Eval harness: shipped / fixed / mutant variants, precision-recall; Jev vs Gemini agreement and threshold calibration per call site; jev-1.13 vs 1.14 | codex | Metrics table generated |
 | P10 | Hosted run, architecture README, video script, exported report + cost | Claude; agy visual polish | Submission package complete |
 
 Jev is used during development for small routing and triage judgments (noted in progress updates).
@@ -136,6 +172,8 @@ Jev is used during development for small routing and triage judgments (noted in 
 
 - Hosted DemoBank URL (organizers).
 - `ANTHROPIC_API_KEY` only if the Claude comparison run is wanted.
+- `TYPESAFE_API_KEY` for the agent's Jev decision layer (P7J) in `agent/.env`; the MCP access used during
+  development does not give the agent a key. Confirm hackathon rules allow a third-party decision API.
 - **Gemini key is free tier: 20 requests / model / day.** Development, eval runs and the demo share
   this. Decide whether to enable billing; otherwise every phase must stay cache-first and judge calls
   must be batched.
