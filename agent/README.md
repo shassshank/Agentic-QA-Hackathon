@@ -135,20 +135,26 @@ observed values, screenshots and the relevant API calls.
 
 ### Reference run
 
-Full run against a local copy of the target, 2026-10-21. The report is in
+Full run against a local copy of the target on a freshly seeded database, 2026-10-21. The report is in
 [`reports/local-2026-10-21/`](reports/local-2026-10-21/) (open `report.html`).
 
-**38 passed · 5 failed · 11 unverified** of 54 requirements; 41 of 41 scenarios completed.
+**47 passed · 4 failed · 3 unverified** of 54 requirements; 41 of 41 scenarios completed.
 
 | Failed requirement | What the agent observed |
 |---|---|
-| TRF-006 Invalid amounts rejected | A `0` transfer was accepted: HTTP 201, a new transaction row and "Transfer complete $0.00". |
+| TRF-006 Invalid amounts rejected | Zero and negative amounts were accepted: HTTP 201, a new transaction row and "Transfer complete". |
 | TRF-008 Over-balance transfer rejected | A transfer of balance + $0.01 was accepted and left the account at −$0.01. |
-| TRF-011 No success state for a rejected transfer | The same over-balance transfer showed "Transfer complete" instead of a rejection. |
 | HIS-007 Date-range filter | A single-day range returned no rows although the unfiltered history has a transaction that day; ranges drop rows on their end date. |
 | HIS-009 Inclusive date boundaries | Same observation, against the boundary-inclusion requirement. |
 
-Every failure was reproduced on a second run and confirmed by review.
+Every failure was reproduced on a second run and confirmed by review (P(violates) ≥ 0.97).
+
+The three unverified requirements, with their reasons:
+- **ACC-002 (`checks_unknown`).** The PRD does not say whether internal record ids count as a "full account
+  identifier".
+- **TRF-003 (`link_disputed`).** Overdraft checks were linked to the same-account requirement and review
+  rejected them.
+- **GEN-008 (`not_testable`).** A rule for the QA agent, not for the application.
 
 ### Evaluation against injected defects
 
@@ -169,17 +175,19 @@ on the evaluation set.
 
 ## Cost
 
-Measured on the reference run, starting from an empty cache:
+From the reference run's `cost.json`. "Cold" prices every call as if nothing were cached, which is the cost
+of auditing a new application. "Billed" is what that run actually paid, with the PRD catalogue and earlier
+decisions reused from cache.
 
-| Phase | Provider | Calls | Cost (USD) |
-|---|---|---:|---:|
-| Interpret PRD (+ 1 repair call) | Gemini `gemini-3.8-flash` | 2 | 0.1125 |
-| Link checks to requirements | TypeSafe Jev | 447 | 0.0257 |
-| Judge wording | TypeSafe Jev | 372 | 0.0067 |
-| Review failures | TypeSafe Jev | 6 | 0.0005 |
-| Escalation of uncertain decisions | Gemini | 2 | 0.0311 |
-| 41 browser scenarios, oracles, confirmation re-runs | none | 0 | 0 |
-| **Total** | | | **≈ $0.18** |
+| Phase | Provider | Calls (incl. cached) | Cold (USD) | Billed (USD) |
+|---|---|---:|---:|---:|
+| Interpret PRD (+ 1 repair call) | Gemini `gemini-3.8-flash` | 2 | 0.1228 | 0 |
+| Link checks to requirements | TypeSafe Jev | 371 | 0.0241 | 0.0166 |
+| Escalate uncertain links | Gemini (fallback `gemini-3.5-flash`) | 1 | 0.0191 | 0.0191 |
+| Judge wording | TypeSafe Jev (+ 2 Gemini) | 121 | 0.0025 | 0.0012 |
+| Review failures | TypeSafe Jev | 5 | 0.0004 | 0.0003 |
+| 41 browser scenarios, oracles, confirmation re-runs | none | 0 | 0 | 0 |
+| **Total** | | | **≈ $0.17** | **$0.037** |
 
 Why it is cheap:
 - The PRD is interpreted once and cached.
@@ -285,7 +293,7 @@ agent/
   not vary.
 - **Without Gemini, more requirements stay unverified.** If Gemini is unavailable (outage or exhausted
   quota), uncertain links and judgements cannot be resolved: those requirements are reported as unverified,
-  never guessed. In testing this moved roughly 10 unverified requirements to roughly 36.
+  never guessed. In testing, the same build gave 3 unverified requirements with Gemini and 36 without it.
 - **The requirement catalogue depends on the interpretation.** Interpreting the same PRD with a different
   model or prompt can split requirements differently and renumber them. The catalogue is cached, so repeat
   runs are stable; compare runs only when they use the same catalogue. The evaluation uses its own fixed
