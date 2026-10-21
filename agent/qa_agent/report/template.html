@@ -51,9 +51,12 @@
       --radius-lg: 14px;
       --radius-full: 9999px;
 
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+      /* Elevation, slate-tinted: sections float on the page, panels sit raised inside sections,
+         interactive cards lift on hover, dialogs sit on top. */
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.08);
+      --shadow-md: 0 2px 4px -1px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.14);
+      --shadow-lg: 0 12px 28px -6px rgba(15, 23, 42, 0.22), 0 4px 10px -4px rgba(15, 23, 42, 0.10);
+      --shadow-section: 0 1px 3px rgba(15, 23, 42, 0.07), 0 10px 24px -8px rgba(15, 23, 42, 0.14);
 
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -837,6 +840,22 @@
       max-height: 75vh;
       object-fit: contain;
       border-radius: var(--radius-xs);
+    }
+
+    /* Elevation: one shadow per surface level, so nested elements read as separate layers.
+       Content inside panels (tables, code, quotes, badges) stays flat. */
+    .section-card, .report-header { box-shadow: var(--shadow-section); border-color: #dde3ea; }
+    .tile, .telemetry-row, .area-table-card, .reasons-box, .defects-card, .filters-toolbar,
+    .req-card, .probe-card, .cost-card, .no-defects-banner { box-shadow: var(--shadow-sm); }
+    .defect-item { box-shadow: 0 1px 2px rgba(153, 27, 27, 0.08); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .defect-item:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -6px rgba(153, 27, 27, 0.30); }
+    .req-card, .probe-card { transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+    .req-card:hover, .probe-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .req-card[open], .probe-card[open] { box-shadow: var(--shadow-md); transform: none; }
+    .filter-chip, .btn-secondary, .filter-select, .search-box { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
+    .lightbox-dialog { box-shadow: var(--shadow-lg); }
+    @media (prefers-reduced-motion: reduce) {
+      .defect-item:hover, .req-card:hover, .probe-card:hover, .tile:hover { transform: none; }
     }
 
     /* Print Styles */
