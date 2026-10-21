@@ -111,7 +111,7 @@ scores the agent's verdicts against ground truth. It is development-only tooling
 
 Every injected defect made at least one oracle fail; the misses are requirement links Jev scored in the
 0.45–0.79 band, which by design escalate to Gemini (not used in that run). Thresholds were deliberately
-not tuned on the evaluation set. Details: [`docs/P9_IMPLEMENTATION.md`](docs/P9_IMPLEMENTATION.md).
+not tuned on the evaluation set.
 
 ## Cost
 
@@ -188,7 +188,6 @@ agent/
 │   └── report/      report data + self-contained HTML template
 ├── eval/            injected-defect evaluation harness (dev only)
 ├── tests/           offline pytest suite
-├── docs/            phase designs and implementation notes
 └── reports/         exported audit report from a full run
 ```
 

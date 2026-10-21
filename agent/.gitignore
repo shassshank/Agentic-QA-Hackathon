@@ -2,6 +2,9 @@ runs/
 .venv/
 .cache/
 
+# Development notes (plans, phase designs, scripts) stay local; only application docs are committed
+docs/
+
 # Playwright and run artifacts (curated submission reports go in reports/, which is tracked)
 test-results/
 playwright-report/
