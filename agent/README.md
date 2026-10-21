@@ -175,7 +175,9 @@ on the evaluation set.
 
 ## Cost
 
-From the reference run's `cost.json`. "Cold" prices every call as if nothing were cached, which is the cost
+Full breakdown with tokens, prices, projections and method:
+[`reports/local-2026-10-21/COST_BREAKDOWN.md`](reports/local-2026-10-21/COST_BREAKDOWN.md) (data:
+[`cost_breakdown.csv`](reports/local-2026-10-21/cost_breakdown.csv)). Summary from the reference run's `cost.json`: "Cold" prices every call as if nothing were cached, which is the cost
 of auditing a new application. "Billed" is what that run actually paid, with the PRD catalogue and earlier
 decisions reused from cache.
 
