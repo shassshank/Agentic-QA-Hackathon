@@ -66,9 +66,14 @@ def evaluate(b: Builder) -> None:
                 after = v.get('after_retry')
                 b.add('general.recoverable_error', f'{i}.retry', content(after) if after else None,
                       'content present after retry', after, reason='retry was not exercised' if after is None else None)
+            elif 'after_recovery' in v:
+                # The offered action was used: it must lead back to working content, not another error.
+                after = v['after_recovery']
+                b.add('general.recoverable_error', f'{i}.retry', content(after) and not after.get('alerts'),
+                      'recovery action leads to working content', after)
             elif pid == 'acc.unknown_account':
                 b.add('general.recoverable_error', f'{i}.retry', None, 'recovery action works', None,
-                      reason='unknown-account probe records actions but does not exercise recovery')
+                      reason='no retry or dashboard action inside the error view to exercise')
     if pid == 'gen.not_found':
         actions = f.get('actions')
         b.add('general.not_found', 'action', bool(re.search(r'dashboard|home', text(actions), re.I))

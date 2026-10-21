@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 
 import pytest
@@ -428,6 +429,30 @@ def test_external_requests(requests, data_origins, expected):
 def test_out_of_scope_features(label, path, expected):
     facts = {'nav': [dict(label='Dashboard', path='/dashboard', h1=['Welcome']), dict(label=label, path=path, h1=[])]}
     assert selected('gen.nav', facts, 'general.out_of_scope_features.navigation').status == expected
+
+
+def test_wording_requirements_go_to_the_judge():
+    landing = dict(path='/', enter_action_visible=True, enter_action_name='Enter Demo', password_inputs=0,
+                   identity_inputs=0)
+    label = selected('ses.enter_demo', dict(landing=landing, after_enter={}), 'session.enter.label_clarity')
+    name = selected('acc.dashboard', block(), 'accounts.name_readable.0')
+    empty = selected('his.empty', {'application': dict(rows=[], empty_text='No transactions match these filters.')},
+                     'history.empty_state.message')
+    for check, text in ((label, 'Enter Demo'), (name, 'Checking'), (empty, 'No transactions match these filters.')):
+        assert check.status == 'unknown' and check.needs_judge and check.judge_input['text'] == [text]
+        # Criteria avoid error/rejection/direction wording, which would route to a different judge question.
+        assert not re.search(r'error|rejection|failure|explanation|direction|credit|debit', check.expected, re.I)
+
+
+@pytest.mark.parametrize('after,expected', [
+    (state(path='/dashboard', landing_enter_visible=False, header_customer='Demo', account_cards=2), 'pass'),
+    (state(path='/accounts/x', landing_enter_visible=False, header_customer='Demo', alerts=['Account not found']),
+     'fail'),
+])
+def test_unknown_account_recovery_is_exercised(after, expected):
+    facts = dict(state=state(landing_enter_visible=False, alerts=['Account not found']),
+                 actions=['Back to dashboard'], after_recovery=dict(action='Back to dashboard', **after))
+    assert selected('acc.unknown_account', facts, 'general.recoverable_error.0.retry').status == expected
 
 
 def test_empty_history_is_not_a_vacuous_pass():

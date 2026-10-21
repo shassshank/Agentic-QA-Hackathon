@@ -160,6 +160,9 @@ def evaluate(b: Builder) -> None:
         b.add('history.empty_state', 'view', not a['rows'] and bool(a.get('empty_text')) and
               not a.get('error_text') and not a.get('alerts') if 'rows' in a else None,
               'no rows, empty text, no errors or alerts', a, sensitive=True)
+        if a.get('empty_text') and not a.get('rows'):
+            b.judge('history.empty_state', 'message', [a['empty_text']],
+                    'the message clearly tells the user that no transactions match the selected filters')
     if 'after_clear' in f:
         a = f['after_clear']
         b.add('history.clear', 'restored', keys(a['rows']) == keys(baseline) and '?' not in a['path']

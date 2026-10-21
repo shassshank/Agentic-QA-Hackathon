@@ -289,3 +289,7 @@ Jev is used during development for small routing and triage judgments (noted in 
     origin, and a non-GET to a host outside the app fails, an outside GET stays unknown) and
     `general.out_of_scope_features` (gen.nav links vs the PRD's out-of-scope list). Both pass live locally; they
     are linked to GEN-007 / SEED-007 on the next full run.
+  - Added wording judges for "clearly labeled" / "clear" requirements that had no check: `session.enter.label_clarity`
+    (SES-002), `accounts.name_readable.N` (ACC-003), `history.empty_state.message` (HIS-010); and the unknown-account
+    probe now clicks the recovery action inside the error view (`general.recoverable_error.N.retry`, GEN-006).
+    Live: recovery passes; Jev scores the real texts 0.95-0.98 and bad variants 0.01-0.18.

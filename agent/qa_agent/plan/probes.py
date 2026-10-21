@@ -30,6 +30,7 @@ LOGOUT = re.compile(r"log ?out|sign ?out", re.I)
 APPLY = re.compile(r"^\s*(apply|search|filter)\b", re.I)
 CLEAR = re.compile(r"clear|reset", re.I)
 RETRY = re.compile(r"try again|retry|reload", re.I)
+RECOVER = re.compile(r"try again|retry|reload|dashboard|home|back", re.I)
 F_ACCOUNT = re.compile(r"^\s*account", re.I)
 F_TYPE = re.compile(r"^\s*(transaction )?type", re.I)
 F_STATUS = re.compile(r"^\s*status", re.I)
@@ -323,6 +324,17 @@ def acc_unknown_account(ctx: ProbeContext) -> None:
     ctx.fact("requested", missing)
     ctx.fact("state", _access_state(run))
     ctx.fact("actions", run.page.locator("main a, main button").all_inner_texts())
+    # Exercise the recovery the error view offers. Only actions inside the view count: the header's own
+    # "Dashboard" link would pass trivially without testing the error state.
+    for role in ("link", "button"):
+        action = run.page.locator("main").get_by_role(role, name=RECOVER)
+        if action.count():
+            label = action.first.inner_text().strip()
+            action.first.click(timeout=run.timeout_ms)
+            run.settle()
+            run.recorder.step(run.page, "click", target=f"{role}:{label}", ok=True, shot=True)
+            ctx.fact("after_recovery", {"action": label, **_access_state(run)})
+            break
 
 
 # --- transfers -----------------------------------------------------------------------------------

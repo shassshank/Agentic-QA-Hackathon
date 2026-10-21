@@ -21,6 +21,9 @@ def evaluate(b: Builder) -> None:
             for field in ('name', 'identifier_text', 'type_label'):
                 b.add('accounts.fields', f'{i}.{field}', bool(a[field]) if field in a else None,
                       f'non-empty {field}', a.get(field))
+            if a.get('name'):
+                b.judge('accounts.name_readable', str(i), [a['name']],
+                        'the account name is clear and human-readable, not a code, number or placeholder')
             value = a.get('balance_text')
             b.add('accounts.fields', f'{i}.balance', parse_money(value) is not None if value is not None else None,
                   'parseable balance', value, sensitive=True)

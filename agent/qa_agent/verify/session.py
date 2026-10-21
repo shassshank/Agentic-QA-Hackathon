@@ -14,6 +14,9 @@ def evaluate(b: Builder) -> None:
     if pid == 'ses.enter_demo':
         landing, after = f.get('landing', {}), f.get('after_enter', {})
         b.add('session.enter', 'landing', landing.get('enter_action_visible'), 'enter action visible', landing)
+        if landing.get('enter_action_name'):
+            b.judge('session.enter', 'label_clarity', [landing['enter_action_name']],
+                    'the action label clearly says it enters or starts the demo')
         b.add('session.enter', 'entered', (after['path'] != landing.get('path') and after['account_cards'] > 0)
               if 'path' in after and 'account_cards' in after else None, 'protected path and account cards', after)
         for field in ('password_inputs', 'identity_inputs'):
