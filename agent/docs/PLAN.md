@@ -278,7 +278,11 @@ Jev is used during development for small routing and triage judgments (noted in 
   timezone was treated as UTC; zero history rows passed row checks; cost accounting dropped unknown usage,
   erased known costs next to an unpriced call and priced provider-cached input as free; a Gemini fallback that
   rejects the thinking level aborted escalated review; blocked vs non-reproduced re-runs were conflated. All fixed.
-  - Open judgement calls: HIS-003 (amount direction) fails on "No change: $0.00" rows left by the zero-amount
-    defect and accumulated across local runs (reset the DB before the exported run); wording judgements in the
-    uncertain band (e.g. TRF-007 blank-amount message) can flip between runs. No oracle yet for "no external
-    payment/bank requests" (GEN-007) or "no out-of-scope features" (SEED-007).
+  - Two judge-input false positives found on a freshly seeded DB and fixed: the direction judge saw only the
+    amount text, so transfers shown as "Moved between accounts" with "From X To Y" failed HIS-003 (it now also sees
+    the account column); the rejection judge saw the field's always-visible format hint mixed into the error, so
+    "Enter an amount to transfer." failed TRF-007 (hints read before submit are now subtracted). Fresh-DB run:
+    exactly the 5 real defects fail (TRF-006, TRF-008, TRF-011, HIS-007, HIS-009).
+  - Open: refresh reports/ once Gemini quota resets (that run had no link escalation: 36 unverified); reset the
+    DB (`make reset`) before any exported run. No oracle yet for "no external payment/bank requests" (GEN-007)
+    or "no out-of-scope features" (SEED-007).

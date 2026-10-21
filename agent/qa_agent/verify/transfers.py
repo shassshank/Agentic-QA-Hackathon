@@ -43,10 +43,14 @@ def evaluate(b: Builder) -> None:
               {'deltas': delta, 'new_rows': [key(r) for r in rows]}, sensitive=True)
         b.add(behaviour, 'no_success_state', not any(success_text(s) for s in feedback.get('statuses', []) + feedback.get('alerts', [])) if 'feedback' in attempt else None,
               'no success feedback', feedback)
-        visible = feedback.get('alerts', []) + feedback.get('statuses', []) + [
-            e.get('message', '') for e in feedback.get('field_errors', [])]
-        errors = feedback.get('alerts', []) + [s for s in feedback.get('statuses', []) if not success_text(s)] + [
-            e.get('message', '') for e in feedback.get('field_errors', [])]
+        # A field's describedby text mixes always-visible format hints with the error; judge what the rejection added.
+        hints = set(attempt.get('field_hints') or [])
+        def field_message(e: dict) -> str:
+            added = [p for p in e.get('parts') or [] if p not in hints]
+            return ' '.join(added) or e.get('message', '')
+        messages = [field_message(e) for e in feedback.get('field_errors', [])]
+        visible = feedback.get('alerts', []) + feedback.get('statuses', []) + messages
+        errors = feedback.get('alerts', []) + [s for s in feedback.get('statuses', []) if not success_text(s)] + messages
         b.add(behaviour, 'explained', bool(errors) if 'feedback' in attempt else None,
               'visible rejection explanation', visible)
         if errors:

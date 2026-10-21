@@ -89,7 +89,7 @@ def evaluate(b: Builder) -> None:
                     'deposit', 'withdrawal', 'transfer'):
                 # Suffix by transaction id, not row position, so ids stay stable as history grows between runs.
                 b.judge('history.amount_direction', f'{name}.{(row.get("id") or str(i))[-12:]}', {
-                        'amount_text': row.get('amount_text'),
+                        'amount_text': row.get('amount_text'), 'account': row.get('account'),
                         'type': row.get('type'), 'status': row.get('status'), 'description': row.get('description')},
                         'completed deposits credit; completed withdrawals debit; direction clear')
         statuses = sorted({m['status'] or '?' for m in mismatches})

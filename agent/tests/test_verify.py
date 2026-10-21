@@ -386,6 +386,20 @@ def test_assumed_timezone_only_decides_zone_independent_rows(start, end, expecte
     assert selected('his.filter.dates', facts, 'history.filter.date_inclusive.0.set').status == expected
 
 
+def test_rejection_explanation_excludes_preexisting_field_hint():
+    f = rejection()
+    hint, error = 'Up to two decimal places, for example 25.00.', 'Enter an amount to transfer.'
+    f['attempt']['field_hints'] = [hint]
+    f['attempt']['feedback'] = dict(alerts=[], statuses=[], field_errors=[
+        dict(label='Amount', message=f'{hint} {error}', parts=[hint, error])])
+    check = selected('trf.reject.blank', f, 'transfer.amount_validation.blank.explanation_quality')
+    assert check.judge_input['text'] == [error]
+    # Without a recorded hint list (older observations) the full message is still judged.
+    del f['attempt']['field_hints']
+    check = selected('trf.reject.blank', f, 'transfer.amount_validation.blank.explanation_quality')
+    assert check.judge_input['text'] == [f'{hint} {error}']
+
+
 def test_empty_history_is_not_a_vacuous_pass():
     facts = dict(combined=block(rows=[]), account_histories=[dict(block(rows=[]), account='Checking')])
     checks = {c.id: c.status for c in report('his.combined', facts).checks}

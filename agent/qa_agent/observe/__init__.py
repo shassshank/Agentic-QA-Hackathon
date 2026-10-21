@@ -12,6 +12,7 @@ from .pages import (
     read_account_detail,
     read_accounts,
     read_feedback,
+    read_field_hints,
     read_header,
     read_layout,
     read_page_text,
@@ -25,6 +26,6 @@ from .pages import (
 __all__ = [
     "AccountDetail", "AccountView", "Feedback", "Layout", "SelectOption", "TxRow", "TxTable",
     "decimal_places", "local_date", "parse_money", "read_account_detail", "read_accounts", "read_feedback",
-    "read_header", "read_layout", "read_page_text", "read_profile", "read_select_options", "read_storage",
+    "read_field_hints", "read_header", "read_layout", "read_page_text", "read_profile", "read_select_options", "read_storage",
     "read_transactions", "read_transfer_balances",
 ]

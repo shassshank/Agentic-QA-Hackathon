@@ -72,6 +72,7 @@ class TxTable(BaseModel):
 class FieldError(BaseModel):
     label: str
     message: str
+    parts: list[str] = []  # each aria-describedby element separately (hint vs error)
 
 
 class Feedback(BaseModel):
@@ -257,10 +258,23 @@ _FEEDBACK_JS = r"""() => {
     alerts: [...document.querySelectorAll('[role="alert"]')].filter(visible).map(text).filter(Boolean),
     statuses: [...document.querySelectorAll('[role="status"]')].filter(visible).map(text).filter(Boolean),
     fieldErrors: [...document.querySelectorAll('[aria-invalid="true"]')].map(el => ({
-      label: labelOf(el), message: describedBy(el).join(' '),
+      label: labelOf(el), message: describedBy(el).join(' '), parts: describedBy(el),
     })),
   };
 }"""
+
+# Text that describes form fields before anything is submitted (format hints). Subtracted from what is shown
+# after a rejection, so the error itself is judged rather than a hint that is always on screen.
+_HINTS_JS = r"""() => {
+  const text = (el) => (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ');
+  return [...document.querySelectorAll('input, select, textarea')].flatMap(el =>
+    (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)
+      .map(id => document.getElementById(id)).filter(Boolean).map(text)).filter(Boolean);
+}"""
+
+
+def read_field_hints(page: Page) -> list[str]:
+    return list(dict.fromkeys(page.evaluate(_HINTS_JS)))
 
 
 def read_feedback(page: Page) -> Feedback:

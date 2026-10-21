@@ -14,7 +14,8 @@ from typing import Any
 from playwright.sync_api import Error as PlaywrightError
 
 from ..execute import ScenarioRun
-from ..observe import AccountView, read_account_detail, read_accounts, read_feedback, read_transactions
+from ..observe import (AccountView, read_account_detail, read_accounts, read_feedback, read_field_hints,
+                       read_transactions)
 from ..observe import read_transfer_balances
 from .registry import ProbeBlocked, ProbeContext, jsonable
 
@@ -140,6 +141,7 @@ def attempt_transfer(run: ScenarioRun, *, source: str | None, destination: str |
     if memo is not None:
         run.fill(MEMO, memo)
     side_before = read_transfer_balances(run.page)
+    hints = read_field_hints(run.page)
     posts_before = len(run.recorder.api_calls("POST"))
     run.clear_timeline()
     submitted_at = now_ms()
@@ -161,6 +163,7 @@ def attempt_transfer(run: ScenarioRun, *, source: str | None, destination: str |
         "submitted_at_ms": submitted_at,
         "settled": settled,
         "feedback": feedback,
+        "field_hints": hints,
         "timeline": timeline,
         "posts": [{"url": p.url, "status": p.status, "request": p.request_body, "response": p.response_body}
                   for p in posts],

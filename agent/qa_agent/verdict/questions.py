@@ -8,9 +8,11 @@ FAIL_THRESHOLD = .15
 def wording_question(criterion):
     if re.search(r'direction|credit|debit', criterion, re.I):
         return 'direction_shown', dict(type='noul', instructions=(
-            'Look only at `item.visible_text.amount_text`. Does that string by itself show whether money '
-            'came in or went out, by a sign (+, -, −) or words such as in/out/credit/debit? '
-            "A bare amount like '$10.00' does not."))
+            'Look at `item.visible_text`. Does the row show which way the money moved? For a deposit or '
+            'withdrawal, `amount_text` must show whether money came in or went out, by a sign (+, -, −) or words '
+            'such as in/out/credit/debit. For a transfer, that counts too, and so does `account` naming the source '
+            "and destination accounts (for example 'Checking to Savings'). A bare amount like '$10.00' with no "
+            'sign, no in/out wording and no from/to accounts does not.'))
     if re.search(r'explanation|rejection|error|failure', criterion, re.I):
         return 'explains', dict(type='noul', instructions=(
             'A form submission was rejected. Does the visible text in `item.visible_text` tell the user '
