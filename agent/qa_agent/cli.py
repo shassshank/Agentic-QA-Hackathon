@@ -294,7 +294,24 @@ def verdict_command(
         link_result=LinkResult.model_validate_json(link_file.read_text()) if link_file else None,
         no_judge=no_judge, no_confirm=no_confirm)
     _print_verdicts(result)
+    meter.save(run / "cost.json")
     console.print(f"Wrote {run / 'verdicts.json'}")
+
+
+@app.command("report")
+def report_command(
+    run: Path = typer.Option(..., exists=True, file_okay=False),
+    catalogue: Path = typer.Option(..., exists=True, dir_okay=False),
+    no_screenshots: bool = typer.Option(False, help="Leave screenshots out of the HTML (smaller file)."),
+) -> None:
+    """Write report.html (self-contained), report.md and report.json from an existing verdict run."""
+    from .models import RequirementCatalogue
+    from .report import write_report
+
+    paths = write_report(run, RequirementCatalogue.model_validate_json(catalogue.read_text()),
+                         screenshots=not no_screenshots)
+    for path in paths.values():
+        console.print(f"Wrote {path} ({path.stat().st_size / 1e6:.1f} MB)")
 
 
 @app.command("run")
@@ -332,6 +349,10 @@ def run_command(
     result = run_verdict(run_dir, catalogue, verdict_client, cache_dir=AGENT_ROOT / ".cache",
                          meter=meter, decider=decision_client, no_confirm=no_confirm)
     _print_verdicts(result)
+    meter.save(run_dir / "cost.json")
+    if (run_dir / "verdicts.json").exists():
+        from .report import write_report
+        console.print(f"Wrote {write_report(run_dir, catalogue)['html']}")
 
 
 if __name__ == "__main__":

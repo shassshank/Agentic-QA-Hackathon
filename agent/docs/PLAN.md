@@ -251,3 +251,10 @@ Jev is used during development for small routing and triage judgments (noted in 
   0 false fails and every pass matches the reference. The rest is uncertain-by-design and escalates to Gemini.
   Cold-cache Jev cost ≈ $0.017 per run. Details and the design iterations in `docs/P7J_IMPLEMENTATION.md`.
   - Next with Gemini quota: `qa-agent verdict` with both keys to measure the escalated result.
+- P8 done (2026-10-20): `qa-agent report --run --catalogue` (also run at the end of `qa-agent run`) writes a
+  self-contained `report.html` (no network; data injected as escaped JSON, rendered with textContent only;
+  failures first with PRD quote, expected vs observed, plain-word repro steps, review probability, screenshots;
+  filterable requirement table; per-scenario steps, screenshots and API calls; cost by phase and provider),
+  plus `report.md` and `report.json`. Steps are translated from locator patterns to plain words
+  (`report/steps.py`); screenshots are downscaled JPEG (~6 MB for 49). Template designed by agy, reviewed and
+  rendered headless at 1280 and 390 px with no errors or network requests. `verdict` and `run` save `cost.json`.

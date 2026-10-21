@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QA Audit Report</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --bg-card: #ffffff; --bg-subtle: #f1f5f9; --bg-hover: #e2e8f0;
+      --border: #cbd5e1; --border-subtle: #e2e8f0; --text: #0f172a; --text-muted: #475569; --text-dim: #64748b;
+      --primary: #2563eb; --primary-hover: #1d4ed8; --primary-subtle: #eff6ff;
+      --pass-bg: #ecfdf5; --pass-border: #a7f3d0; --pass-text: #065f46; --pass-solid: #059669;
+      --fail-bg: #fff1f2; --fail-border: #fecdd3; --fail-text: #9f1239; --fail-solid: #e11d48;
+      --unverified-bg: #f8fafc; --unverified-border: #cbd5e1; --unverified-text: #334155; --unverified-solid: #64748b;
+      --badge-bg: #f1f5f9; --badge-border: #cbd5e1; --badge-text: #334155;
+      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07);
+      --radius: 8px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #090d16; --bg-card: #111827; --bg-subtle: #1e293b; --bg-hover: #334155;
+        --border: #334155; --border-subtle: #1f293d; --text: #f1f5f9; --text-muted: #94a3b8; --text-dim: #64748b;
+        --primary: #3b82f6; --primary-hover: #60a5fa; --primary-subtle: #172554;
+        --pass-bg: rgba(6,78,59,0.25); --pass-border: #047857; --pass-text: #6ee7b7; --pass-solid: #10b981;
+        --fail-bg: rgba(136,19,55,0.25); --fail-border: #be123c; --fail-text: #fda4af; --fail-solid: #f43f5e;
+        --unverified-bg: #1e293b; --unverified-border: #475569; --unverified-text: #cbd5e1; --unverified-solid: #94a3b8;
+        --badge-bg: #1e293b; --badge-border: #334155; --badge-text: #cbd5e1;
+        --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-sans); background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 1.5rem; max-width: 1320px; margin: 0 auto; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); }
+    .section-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; }
+    .section-header h2 { font-size: 1.35rem; font-weight: 700; }
+    .section-desc { color: var(--text-muted); font-size: 0.9rem; }
+
+    .report-header { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+    .report-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
+    .meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .meta-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 600; }
+    .meta-val { font-size: 0.95rem; font-weight: 500; overflow-wrap: anywhere; }
+    .mono { font-family: var(--font-mono); font-size: 0.88rem; }
+
+    .badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; border: 1px solid transparent; line-height: 1.2; white-space: nowrap; }
+    .badge-pass { background: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
+    .badge-fail { background: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
+    .badge-unverified { background: var(--unverified-bg); border-color: var(--unverified-border); color: var(--unverified-text); }
+    .badge-unknown { background: var(--bg-subtle); border-color: var(--border); color: var(--text-dim); }
+    .badge-area { background: var(--bg-subtle); border-color: var(--border); color: var(--text); font-family: var(--font-mono); }
+    .badge-bullet { background: var(--primary-subtle); border-color: var(--primary); color: var(--primary); font-family: var(--font-mono); }
+    .badge-cov-full { background: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
+    .badge-cov-part { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+    .badge-cov-none { background: var(--bg-subtle); border-color: var(--border); color: var(--text-dim); }
+    .badge-kind { font-size: 0.72rem; text-transform: uppercase; background: var(--bg-subtle); border-color: var(--border); }
+    .badge-kind-negative { border-color: #fca5a5; color: #b91c1c; }
+    .badge-kind-edge { border-color: #c4b5fd; color: #6d28d9; }
+
+    .tiles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; box-shadow: var(--shadow-sm); }
+    .tile-num { font-size: 2.25rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+    .tile-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+    .tile-pass { border-top: 4px solid var(--pass-solid); } .tile-pass .tile-num { color: var(--pass-solid); }
+    .tile-fail { border-top: 4px solid var(--fail-solid); } .tile-fail .tile-num { color: var(--fail-solid); }
+    .tile-unverified { border-top: 4px solid var(--unverified-solid); } .tile-unverified .tile-num { color: var(--unverified-solid); }
+    .tile-total { border-top: 4px solid var(--primary); }
+
+    .bar-stack { height: 10px; width: 100%; background: var(--bg-subtle); border-radius: 9999px; overflow: hidden; display: flex; margin: 0.5rem 0; }
+    .bar-segment { height: 100%; }
+    .bar-seg-pass { background: var(--pass-solid); }
+    .bar-seg-fail { background: var(--fail-solid); }
+    .bar-seg-unverified { background: var(--unverified-solid); }
+
+    .summary-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    @media (max-width: 860px) { .summary-details-grid { grid-template-columns: 1fr; } }
+    .area-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .area-table th, .area-table td { padding: 0.45rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-subtle); }
+    .area-table th { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
+    .area-bar-col { width: 120px; }
+    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; }
+    .reason-item { display: flex; gap: 0.5rem; align-items: flex-start; }
+    .reason-count { font-weight: 700; color: var(--text); min-width: 2.2rem; }
+    .reason-text { color: var(--text-muted); }
+    .how-to-read { background: var(--bg-subtle); border-left: 4px solid var(--primary); padding: 0.85rem 1.15rem; border-radius: 0 var(--radius) var(--radius) 0; font-size: 0.88rem; color: var(--text-muted); }
+    .how-to-read strong { color: var(--text); }
+
+    .failure-card { background: var(--bg-card); border: 1px solid var(--fail-border); border-left: 5px solid var(--fail-solid); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+    .failure-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .failure-title-wrap { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .failure-id { font-family: var(--font-mono); font-weight: 700; font-size: 1.15rem; color: var(--fail-text); }
+    .failure-title { font-size: 1.15rem; font-weight: 700; }
+    .review-pill { background: var(--fail-bg); border: 1px solid var(--fail-border); color: var(--fail-text); padding: 0.3rem 0.65rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; font-family: var(--font-mono); }
+    blockquote.prd-quote { background: var(--bg-subtle); border-left: 3px solid var(--border); padding: 0.65rem 1rem; margin: 0.75rem 0 1rem 0; font-style: italic; color: var(--text-muted); border-radius: 0 4px 4px 0; font-size: 0.92rem; }
+    .quote-footer { margin-top: 0.35rem; display: flex; gap: 0.35rem; font-style: normal; }
+    .repro-steps { margin: 0.75rem 0 1rem 1.25rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+
+    .data-table-wrap { overflow-x: auto; margin: 0.75rem 0; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    .data-table th, .data-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+    .data-table th { background: var(--bg-subtle); color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
+    .data-table tbody tr:hover { background: var(--bg-subtle); }
+    .obs-code { font-family: var(--font-mono); font-size: 0.8rem; background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.4rem 0.6rem; max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+
+    .shots-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .shot-thumb-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; }
+    .shot-thumb-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+    .shot-thumb-img { width: 100%; height: 160px; object-fit: cover; display: block; background: #000; }
+    .shot-thumb-caption { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+    details.sub-details { margin: 0.75rem 0; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-subtle); }
+    details.sub-details > summary { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); user-select: none; }
+    details.sub-details > summary:hover { color: var(--text); }
+    details.sub-details[open] > summary { border-bottom: 1px solid var(--border-subtle); }
+    details.sub-details .sub-content { padding: 0.75rem; overflow-x: auto; }
+
+    .filters-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-subtle); border-radius: var(--radius); border: 1px solid var(--border-subtle); }
+    .search-box { flex: 1; min-width: 200px; padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); font-size: 0.88rem; }
+    .filter-group { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .filter-chip { padding: 0.35rem 0.75rem; border-radius: 9999px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .filter-chip:hover { border-color: var(--primary); color: var(--text); }
+    .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .filter-select { padding: 0.4rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.85rem; }
+    .filter-count { font-size: 0.82rem; color: var(--text-dim); margin-left: auto; }
+
+    .req-row-main { cursor: pointer; }
+    .req-row-detail { background: var(--bg-subtle); }
+    .req-detail-container { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; border-left: 3px solid var(--primary); }
+    .req-expand-btn { background: none; border: none; cursor: pointer; font-weight: bold; color: var(--text-dim); padding: 0.2rem 0.4rem; border-radius: 4px; }
+    .req-expand-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+    .probe-card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.85rem; background: var(--bg-card); overflow: hidden; }
+    .probe-card > summary { padding: 0.85rem 1.15rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; background: var(--bg-card); user-select: none; }
+    .probe-card > summary:hover { background: var(--bg-subtle); }
+    .probe-card[open] > summary { border-bottom: 1px solid var(--border-subtle); background: var(--bg-subtle); }
+    .probe-summary-left { display: flex; align-items: baseline; gap: 0.65rem; flex-wrap: wrap; }
+    .probe-summary-right { display: flex; align-items: center; gap: 0.5rem; }
+    .probe-body { padding: 1.25rem; }
+    .step-item { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; padding: 0.2rem 0; }
+    .step-item.step-failed { color: var(--fail-solid); font-weight: 600; }
+    .step-num { color: var(--text-dim); min-width: 1.8rem; font-family: var(--font-mono); font-size: 0.82rem; }
+
+    @keyframes pulseHighlight { 0% { box-shadow: 0 0 0 4px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
+    .highlight-pulse { animation: pulseHighlight 2s ease-out; }
+
+    .lightbox-dialog { border: 1px solid var(--border); border-radius: var(--radius); padding: 0; background: var(--bg-card); color: var(--text); max-width: 90vw; max-height: 90vh; margin: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    .lightbox-dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(2px); }
+    .lightbox-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border-subtle); }
+    .lightbox-title { font-weight: 600; font-size: 0.95rem; }
+    .lightbox-close-btn { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.85rem; }
+    .lightbox-close-btn:hover { background: var(--bg-hover); }
+    .lightbox-body { padding: 1rem; display: flex; justify-content: center; align-items: center; max-height: calc(90vh - 70px); overflow: auto; }
+    .lightbox-img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
+
+    .warning-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem; font-size: 0.9rem; }
+    @media (prefers-color-scheme: dark) { .warning-box { background: rgba(245,158,11,0.15); border-color: #b45309; color: #fde68a; } }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; padding: 0 !important; font-size: 10pt; }
+      .filters-toolbar, .lightbox-dialog, .req-expand-btn, button { display: none !important; }
+      .section-card, .failure-card, .probe-card, .tile { box-shadow: none !important; border: 1px solid #ddd !important; page-break-inside: avoid; break-inside: avoid; }
+      details { display: block !important; }
+      details > :not(summary) { display: block !important; }
+      details > summary { cursor: default; }
+      .req-row-detail { display: table-row !important; }
+    }
+  </style>
+</head>
+<body>
+  <script id="report-data" type="application/json">/*__REPORT_DATA__*/</script>
+  <header id="report-header" class="report-header"></header>
+  <main id="report-main"></main>
+
+  <dialog id="lightbox" class="lightbox-dialog" aria-label="Screenshot lightbox">
+    <div class="lightbox-header">
+      <span id="lightbox-caption" class="lightbox-title"></span>
+      <button type="button" id="lightbox-close" class="lightbox-close-btn" aria-label="Close dialog">✕ Close</button>
+    </div>
+    <div class="lightbox-body"><img id="lightbox-img" class="lightbox-img" alt="Enlarged screenshot"></div>
+  </dialog>
+
+  <script>
+    (function() {
+      'use strict';
+      function el(tag, props, ...children) {
+        const node = document.createElement(tag);
+        if (props) {
+          for (const [k, v] of Object.entries(props)) {
+            if (v == null || v === false) continue;
+            if (k === 'className') node.className = v;
+            else if (k === 'textContent') node.textContent = v;
+            else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
+            else if (k === 'dataset' && typeof v === 'object') {
+              for (const [dk, dv] of Object.entries(v)) node.dataset[dk] = dv;
+            } else node.setAttribute(k, v);
+          }
+        }
+        for (const c of children.flat(Infinity)) {
+          if (c == null || c === false) continue;
+          if (typeof c === 'string' || typeof c === 'number') node.appendChild(document.createTextNode(String(c)));
+          else if (c instanceof Node) node.appendChild(c);
+        }
+        return node;
+      }
+
+      function formatTime(iso) {
+        if (!iso) return '—';
+        try {
+          const d = new Date(iso);
+          return isNaN(d) ? iso : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
+        } catch { return iso; }
+      }
+      function formatUsd(val) { return val == null ? 'unpriced' : '$' + Number(val).toFixed(6); }
+      function formatNum(n) { return n != null ? Number(n).toLocaleString() : '0'; }
+
+      function statusBadge(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'passed' || s === 'pass') return el('span', { className: 'badge badge-pass' }, '✓ PASS');
+        if (s === 'failed' || s === 'fail') return el('span', { className: 'badge badge-fail' }, '✗ FAIL');
+        if (s === 'unverified') return el('span', { className: 'badge badge-unverified' }, '? UNVERIFIED');
+        return el('span', { className: 'badge badge-unknown' }, `? ${status || 'UNKNOWN'}`);
+      }
+
+      function coverageBadge(cov) {
+        const c = String(cov || 'none').toLowerCase();
+        const cls = c === 'full' ? 'badge-cov-full' : (c === 'partial' ? 'badge-cov-part' : 'badge-cov-none');
+        return el('span', { className: `badge ${cls}` }, c === 'full' ? 'Full Coverage' : (c === 'partial' ? 'Partial' : 'No Coverage'));
+      }
+
+      function kindBadge(kind) { return el('span', { className: `badge badge-kind badge-kind-${kind || 'normal'}` }, kind || 'normal'); }
+
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      const lightboxCaption = document.getElementById('lightbox-caption');
+      const lightboxClose = document.getElementById('lightbox-close');
+
+      function openLightbox(src, caption) {
+        if (typeof src === 'string' && src.startsWith('data:image/')) {
+          lightboxImg.setAttribute('src', src);
+          lightboxImg.setAttribute('alt', caption || 'Screenshot');
+          lightboxCaption.textContent = caption || 'Screenshot';
+          if (typeof lightbox.showModal === 'function') lightbox.showModal();
+          else lightbox.setAttribute('open', 'true');
+        }
+      }
+      lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
+      lightboxClose.addEventListener('click', () => lightbox.close());
+
+      let data = {};
+      try {
+        data = JSON.parse(document.getElementById('report-data').textContent);
+      } catch (err) {
+        document.body.appendChild(el('div', { className: 'warning-box' }, 'Failed to parse report data payload: ' + err.message));
+        return;
+      }
+
+      const meta = data.meta || {}, summary = data.summary || {}, requirements = data.requirements || [];
+      const probes = data.probes || {}, cost = data.cost || {}, reasons = data.reasons || {}, warnings = data.warnings || [];
+
+      // 1. Header
+      const headerEl = document.getElementById('report-header');
+      headerEl.appendChild(el('div', { className: 'header-top' },
+        el('div', null,
+          el('h1', { className: 'report-title' }, meta.title || 'DemoBank QA Audit Report'),
+          el('div', { className: 'meta-val', style: 'color: var(--text-muted); margin-top: 0.25rem;' },
+            'Autonomous QA verification against Product Requirements Document'
+          )
+        )
+      ));
+
+      const prdSha = meta.catalogue && meta.catalogue.prd_sha256 ? meta.catalogue.prd_sha256.slice(0, 10) : '—';
+      headerEl.appendChild(el('div', { className: 'meta-grid' },
+        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Target URL'),
+          el('span', { className: 'meta-val mono' }, meta.target_url ? el('a', { href: meta.target_url, target: '_blank', rel: 'noopener' }, meta.target_url) : '—')),
+        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Run Tag'), el('span', { className: 'meta-val mono' }, meta.run_tag || '—')),
+        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'PRD Hash'), el('span', { className: 'meta-val mono', title: meta.catalogue?.prd_sha256 || '' }, prdSha)),
+        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Scenarios Completed'), el('span', { className: 'meta-val' }, `${meta.probes_completed || 0} / ${meta.probes_total || 0} (${meta.probe_runtime_s || 0}s)`)),
+        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Generated At'), el('span', { className: 'meta-val' }, formatTime(meta.generated_at)))
+      ));
+
+      const mainEl = document.getElementById('report-main');
+      if (warnings.length > 0) {
+        mainEl.appendChild(el('div', { className: 'warning-box' },
+          el('strong', null, 'Warnings:'),
+          el('ul', { style: 'margin-left: 1.25rem; margin-top: 0.25rem;' }, warnings.map(w => el('li', null, String(w))))
+        ));
+      }
+
+      // 2. Verdict Summary
+      const summarySec = el('section', { className: 'section-card' },
+        el('div', { className: 'section-header' }, el('h2', null, 'Verdict Summary'), el('span', { className: 'section-desc' }, 'High-level audit verification results & coverage breakdown'))
+      );
+
+      const totalReqs = summary.total || requirements.length || 0;
+      const passedCount = summary.passed || 0, failedCount = summary.failed || 0, unverifiedCount = summary.unverified || 0;
+
+      summarySec.appendChild(el('div', { className: 'tiles-grid' },
+        el('div', { className: 'tile tile-pass' }, el('span', { className: 'tile-num' }, String(passedCount)), el('span', { className: 'tile-label' }, 'Passed Requirements')),
+        el('div', { className: 'tile tile-fail' }, el('span', { className: 'tile-num' }, String(failedCount)), el('span', { className: 'tile-label' }, 'Failed Requirements')),
+        el('div', { className: 'tile tile-unverified' }, el('span', { className: 'tile-num' }, String(unverifiedCount)), el('span', { className: 'tile-label' }, 'Unverified Requirements')),
+        el('div', { className: 'tile tile-total' }, el('span', { className: 'tile-num' }, String(totalReqs)), el('span', { className: 'tile-label' }, 'Total In PRD'))
+      ));
+
+      const cov = summary.coverage || {}, covFull = cov.full || 0, covPart = cov.partial || 0, covNone = cov.none || 0;
+      const covTotal = (covFull + covPart + covNone) || totalReqs || 1;
+      summarySec.appendChild(el('div', { className: 'bar-stack', title: `Passed: ${passedCount}, Failed: ${failedCount}, Unverified: ${unverifiedCount}` },
+        el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${(passedCount / (totalReqs || 1) * 100)}%` }),
+        el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${(failedCount / (totalReqs || 1) * 100)}%` }),
+        el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${(unverifiedCount / (totalReqs || 1) * 100)}%` })
+      ));
+      summarySec.appendChild(el('div', { style: 'display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; font-size: 0.85rem;' },
+        el('span', null, el('strong', null, 'Coverage: '), `${covFull} Full (${((covFull / covTotal) * 100).toFixed(1)}%) · ${covPart} Partial · ${covNone} None`)
+      ));
+
+      const sumDetailsGrid = el('div', { className: 'summary-details-grid' });
+      const areaWrap = el('div', null, el('h3', { style: 'font-size: 1rem; margin-bottom: 0.75rem;' }, 'Breakdown by PRD Area'));
+      const areaTable = el('table', { className: 'area-table' },
+        el('thead', null, el('tr', null, el('th', null, 'Area'), el('th', null, 'Pass'), el('th', null, 'Fail'), el('th', null, 'Unv'), el('th', null, 'Total'), el('th', { className: 'area-bar-col' }, 'Ratio')))
+      );
+      const areaTbody = el('tbody');
+      for (const [areaName, aCounts] of Object.entries(summary.by_area || {})) {
+        const ap = aCounts.passed || 0, af = aCounts.failed || 0, au = aCounts.unverified || 0, at = ap + af + au || 1;
+        areaTbody.appendChild(el('tr', null,
+          el('td', null, el('span', { className: 'badge badge-area' }, areaName)),
+          el('td', { style: 'color: var(--pass-solid); font-weight: 600;' }, String(ap)),
+          el('td', { style: af > 0 ? 'color: var(--fail-solid); font-weight: 600;' : '' }, String(af)),
+          el('td', { style: 'color: var(--text-dim);' }, String(au)),
+          el('td', { style: 'font-weight: 600;' }, String(at)),
+          el('td', { className: 'area-bar-col' },
+            el('div', { className: 'bar-stack', style: 'height: 6px; margin: 0;' },
+              el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${(ap / at * 100)}%` }),
+              el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${(af / at * 100)}%` }),
+              el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${(au / at * 100)}%` })
+            )
+          )
+        ));
+      }
+      areaTable.appendChild(areaTbody);
+      areaWrap.appendChild(areaTable);
+      sumDetailsGrid.appendChild(areaWrap);
+
+      const reasonsWrap = el('div', null, el('h3', { style: 'font-size: 1rem; margin-bottom: 0.75rem;' }, 'Unverified Explanations'));
+      const reasonsUl = el('ul', { className: 'reasons-list' });
+      const summaryReasons = summary.reasons || {};
+      const reasonEntries = Object.entries(summaryReasons);
+      if (reasonEntries.length === 0) reasonsUl.appendChild(el('li', { className: 'reason-item' }, 'All requirements verified.'));
+      else {
+        for (const [code, count] of reasonEntries) {
+          reasonsUl.appendChild(el('li', { className: 'reason-item' },
+            el('span', { className: 'reason-count' }, `${count} ×`),
+            el('span', { className: 'reason-text' }, reasons[code] || code)
+          ));
+        }
+      }
+      reasonsWrap.appendChild(reasonsUl);
+      sumDetailsGrid.appendChild(reasonsWrap);
+      summarySec.appendChild(sumDetailsGrid);
+
+      summarySec.appendChild(el('div', { className: 'how-to-read' },
+        el('p', null,
+          el('strong', null, 'How to read this report: '),
+          el('strong', { style: 'color: var(--fail-solid);' }, 'failed'), ' = confirmed on re-run and reviewed as violating the requirement; ',
+          el('strong', { style: 'color: var(--unverified-solid);' }, 'unverified'), ' = not enough evidence, never a guess.'
+        )
+      ));
+      mainEl.appendChild(summarySec);
+
+      function jumpToProbe(probeId) {
+        const target = document.getElementById('probe-' + probeId);
+        if (target) {
+          target.open = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.add('highlight-pulse');
+          setTimeout(() => target.classList.remove('highlight-pulse'), 2000);
+        }
+      }
+
+      function renderNetworkTable(networkCalls) {
+        const wrap = el('div', { className: 'data-table-wrap' });
+        const table = el('table', { className: 'data-table' },
+          el('thead', null, el('tr', null, el('th', { style: 'width: 80px;' }, 'Method'), el('th', null, 'Path'), el('th', { style: 'width: 70px;' }, 'Status'), el('th', null, 'Request'), el('th', null, 'Response')))
+        );
+        const tbody = el('tbody');
+        for (const net of networkCalls) {
+          const st = Number(net.status);
+          const stColor = st >= 400 ? 'var(--fail-solid)' : (st >= 300 ? '#d97706' : 'var(--pass-solid)');
+          tbody.appendChild(el('tr', null,
+            el('td', { className: 'mono', style: 'font-weight: 600;' }, net.method || 'GET'),
+            el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, net.path || '/'),
+            el('td', { className: 'mono', style: `font-weight: 700; color: ${stColor};` }, String(net.status || '—')),
+            el('td', null, net.request ? el('pre', { className: 'obs-code' }, net.request) : '—'),
+            el('td', null, net.response ? el('pre', { className: 'obs-code' }, net.response) : '—')
+          ));
+        }
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        return wrap;
+      }
+
+      // 3. Failures First
+      const failedReqs = requirements.filter(r => r.status === 'failed');
+      const failuresSec = el('section', { className: 'section-card' },
+        el('div', { className: 'section-header' },
+          el('h2', { style: failedReqs.length > 0 ? 'color: var(--fail-solid);' : '' }, `Failed Requirements (${failedReqs.length})`),
+          el('span', { className: 'section-desc' }, 'Confirmed non-conformance with PRD requirements')
+        )
+      );
+
+      if (failedReqs.length === 0) {
+        failuresSec.appendChild(el('div', { style: 'color: var(--pass-solid); font-weight: 600; padding: 1rem 0;' }, '✓ No requirement failures were detected in this audit.'));
+      } else {
+        for (const r of failedReqs) {
+          const fCard = el('article', { className: 'failure-card' });
+          const fHead = el('div', { className: 'failure-head' },
+            el('div', { className: 'failure-title-wrap' },
+              el('span', { className: 'failure-id' }, r.id),
+              el('span', { className: 'badge badge-area' }, r.area || 'GEN'),
+              el('h3', { className: 'failure-title' }, r.title)
+            )
+          );
+          if (r.review) {
+            fHead.appendChild(el('span', { className: 'review-pill' },
+              `Reviewed: ${r.review.verdict || 'violates'}, p=${r.review.p ?? '—'}, ${r.review.model || ''} (${r.review.provider || ''})`
+            ));
+          }
+          fCard.appendChild(fHead);
+
+          if (r.source_quote || r.statement) {
+            const bquote = el('blockquote', { className: 'prd-quote' }, el('p', null, `“${r.source_quote || r.statement}”`));
+            if (r.source_bullets && r.source_bullets.length > 0) {
+              const bulletsDiv = el('div', { className: 'quote-footer' });
+              for (const b of r.source_bullets) bulletsDiv.appendChild(el('span', { className: 'badge badge-bullet' }, b));
+              bquote.appendChild(bulletsDiv);
+            }
+            fCard.appendChild(bquote);
+          }
+
+          const fChecks = (r.failure && r.failure.checks) ? r.failure.checks : [];
+          if (fChecks.length > 0) {
+            fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Assertion Discrepancies:'));
+            const cTableWrap = el('div', { className: 'data-table-wrap' });
+            const cTable = el('table', { className: 'data-table' },
+              el('thead', null, el('tr', null, el('th', { style: 'width: 25%;' }, 'Check ID'), el('th', { style: 'width: 30%;' }, 'Expected'), el('th', null, 'Observed')))
+            );
+            const cTbody = el('tbody');
+            for (const chk of fChecks) {
+              cTbody.appendChild(el('tr', null,
+                el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, chk.check_id || 'check'),
+                el('td', null, chk.expected || '—'),
+                el('td', null, el('pre', { className: 'obs-code' }, chk.observed || '—'))
+              ));
+            }
+            cTable.appendChild(cTbody);
+            cTableWrap.appendChild(cTable);
+            fCard.appendChild(cTableWrap);
+          }
+
+          if (r.failure && r.failure.steps && r.failure.steps.length > 0) {
+            fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Steps to Reproduce:'));
+            const ol = el('ol', { className: 'repro-steps' });
+            for (const st of r.failure.steps) ol.appendChild(el('li', null, st));
+            fCard.appendChild(ol);
+          }
+
+          const failProbeId = r.failure ? r.failure.probe_id : (r.probes && r.probes[0]);
+          const probeObj = failProbeId ? probes[failProbeId] : null;
+          if (probeObj) {
+            if (probeObj.screenshots && probeObj.screenshots.length > 0) {
+              fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Failure Screenshots:'));
+              const gallery = el('div', { className: 'shots-gallery' });
+              for (const shot of probeObj.screenshots) {
+                gallery.appendChild(el('div', { className: 'shot-thumb-card', onclick: () => openLightbox(shot.src, shot.caption) },
+                  el('img', { className: 'shot-thumb-img', src: shot.src, alt: shot.caption || 'Failure screenshot', loading: 'lazy' }),
+                  el('div', { className: 'shot-thumb-caption' }, shot.caption || shot.name)
+                ));
+              }
+              fCard.appendChild(gallery);
+            }
+            if (probeObj.network && probeObj.network.length > 0) {
+              fCard.appendChild(el('details', { className: 'sub-details' },
+                el('summary', null, `Scenario Network Calls (${probeObj.network.length}) — Probe: ${failProbeId}`),
+                el('div', { className: 'sub-content' }, renderNetworkTable(probeObj.network))
+              ));
+            }
+          }
+          failuresSec.appendChild(fCard);
+        }
+      }
+      mainEl.appendChild(failuresSec);
+
+      // 4. All Requirements Section
+      const allReqsSec = el('section', { className: 'section-card' },
+        el('div', { className: 'section-header' }, el('h2', null, 'All Requirements'), el('span', { className: 'section-desc' }, 'Comprehensive verification matrix & assertion traceability'))
+      );
+
+      let filterStatus = 'all', filterArea = 'all', searchQuery = '';
+      const uniqueAreas = Array.from(new Set(requirements.map(r => r.area).filter(Boolean))).sort();
+      const toolbar = el('div', { className: 'filters-toolbar' });
+
+      toolbar.appendChild(el('input', {
+        type: 'search', className: 'search-box', placeholder: 'Search requirements by ID, title, PRD text, or note...',
+        oninput: (e) => { searchQuery = e.target.value.toLowerCase().trim(); applyReqFilters(); }
+      }));
+
+      const statusGroup = el('div', { className: 'filter-group' });
+      const chips = [
+        { id: 'all', label: `All (${requirements.length})` },
+        { id: 'passed', label: `Passed (${passedCount})` },
+        { id: 'failed', label: `Failed (${failedCount})` },
+        { id: 'unverified', label: `Unverified (${unverifiedCount})` }
+      ];
+      const chipButtons = {};
+      for (const chip of chips) {
+        const btn = el('button', {
+          type: 'button', className: `filter-chip ${chip.id === 'all' ? 'active' : ''}`,
+          onclick: () => {
+            filterStatus = chip.id;
+            for (const b of Object.values(chipButtons)) b.classList.remove('active');
+            btn.classList.add('active');
+            applyReqFilters();
+          }
+        }, chip.label);
+        chipButtons[chip.id] = btn;
+        statusGroup.appendChild(btn);
+      }
+      toolbar.appendChild(statusGroup);
+
+      toolbar.appendChild(el('select', {
+        className: 'filter-select',
+        onchange: (e) => { filterArea = e.target.value; applyReqFilters(); }
+      }, el('option', { value: 'all' }, 'All Areas'), uniqueAreas.map(a => el('option', { value: a }, a))));
+
+      const countLabel = el('span', { className: 'filter-count' }, `Showing ${requirements.length} of ${requirements.length}`);
+      toolbar.appendChild(countLabel);
+      allReqsSec.appendChild(toolbar);
+
+      const reqTableWrap = el('div', { className: 'data-table-wrap' });
+      const reqTable = el('table', { className: 'data-table' },
+        el('thead', null, el('tr', null, el('th', { style: 'width: 30px;' }, ''), el('th', { style: 'width: 100px;' }, 'ID'), el('th', { style: 'width: 70px;' }, 'Area'), el('th', null, 'Title'), el('th', { style: 'width: 110px;' }, 'Status'), el('th', { style: 'width: 120px;' }, 'Coverage'), el('th', null, 'Reason / Verdict')))
+      );
+      const reqTbody = el('tbody');
+      reqTable.appendChild(reqTbody);
+      reqTableWrap.appendChild(reqTable);
+      allReqsSec.appendChild(reqTableWrap);
+
+      const rowElements = [];
+      requirements.forEach((req) => {
+        let isExpanded = false;
+        const expandBtn = el('button', { type: 'button', className: 'req-expand-btn', 'aria-label': 'Expand row details', 'aria-expanded': 'false' }, '+');
+        const mainRow = el('tr', { className: 'req-row-main' },
+          el('td', null, expandBtn),
+          el('td', { className: 'mono', style: 'font-weight: 700;' }, req.id),
+          el('td', null, el('span', { className: 'badge badge-area' }, req.area || '—')),
+          el('td', { style: 'font-weight: 500;' }, req.title),
+          el('td', null, statusBadge(req.status)),
+          el('td', null, coverageBadge(req.coverage)),
+          el('td', { style: 'color: var(--text-muted); font-size: 0.82rem;' }, req.reason_text || (req.review ? `Review: ${req.review.verdict}` : '—'))
+        );
+
+        const detailRow = el('tr', { className: 'req-row-detail', style: 'display: none;' });
+        const detailCell = el('td', { colSpan: 7 });
+        const detailContainer = el('div', { className: 'req-detail-container' });
+
+        if (req.statement) {
+          detailContainer.appendChild(el('div', null,
+            el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, 'PRD Requirement Statement:'),
+            el('p', { style: 'margin-top: 0.2rem; font-size: 0.92rem;' }, req.statement)
+          ));
+        }
+
+        if (req.source_quote) {
+          const q = el('blockquote', { className: 'prd-quote' }, `“${req.source_quote}”`);
+          if (req.source_bullets && req.source_bullets.length > 0) {
+            const bdiv = el('div', { className: 'quote-footer' });
+            for (const b of req.source_bullets) bdiv.appendChild(el('span', { className: 'badge badge-bullet' }, b));
+            q.appendChild(bdiv);
+          }
+          detailContainer.appendChild(q);
+        }
+
+        if (req.assertions && req.assertions.length > 0) {
+          detailContainer.appendChild(el('div', null,
+            el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, 'Assertions:'),
+            el('ul', { style: 'margin-left: 1.25rem; font-size: 0.88rem; margin-top: 0.25rem;' }, req.assertions.map(a => el('li', null, a)))
+          ));
+        }
+
+        if (req.checks && req.checks.length > 0) {
+          detailContainer.appendChild(el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, `Linked Verification Checks (${req.checks.length}):`));
+          const chkTableWrap = el('div', { className: 'data-table-wrap' });
+          const chkTable = el('table', { className: 'data-table' },
+            el('thead', null, el('tr', null, el('th', { style: 'width: 90px;' }, 'Status'), el('th', null, 'Check ID'), el('th', null, 'Probe Scenario'), el('th', null, 'Expected'), el('th', null, 'Observed')))
+          );
+          const chkTbody = el('tbody');
+          for (const c of req.checks) {
+            const probeBtn = el('a', {
+              href: `#probe-${c.probe_id}`, className: 'mono', style: 'font-size: 0.82rem;',
+              onclick: (e) => { e.preventDefault(); jumpToProbe(c.probe_id); }
+            }, c.probe_id || '—');
+
+            chkTbody.appendChild(el('tr', null,
+              el('td', null, statusBadge(c.status)),
+              el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, c.id),
+              el('td', null, probeBtn),
+              el('td', { style: 'font-size: 0.85rem;' }, c.expected || '—'),
+              el('td', null, c.observed ? el('pre', { className: 'obs-code' }, c.observed) : '—')
+            ));
+          }
+          chkTable.appendChild(chkTbody);
+          chkTableWrap.appendChild(chkTable);
+          detailContainer.appendChild(chkTableWrap);
+        }
+
+        if (req.probes && req.probes.length > 0) {
+          const pLinks = el('div', { style: 'display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; font-size: 0.85rem;' },
+            el('strong', { style: 'color: var(--text-dim);' }, 'Linked Scenarios:')
+          );
+          for (const pid of req.probes) {
+            pLinks.appendChild(el('button', {
+              type: 'button', className: 'filter-chip', style: 'font-size: 0.78rem; font-family: var(--font-mono);',
+              onclick: () => jumpToProbe(pid)
+            }, `➔ ${pid}`));
+          }
+          detailContainer.appendChild(pLinks);
+        }
+
+        detailCell.appendChild(detailContainer);
+        detailRow.appendChild(detailCell);
+
+        function toggleRow() {
+          isExpanded = !isExpanded;
+          detailRow.style.display = isExpanded ? 'table-row' : 'none';
+          expandBtn.textContent = isExpanded ? '−' : '+';
+          expandBtn.setAttribute('aria-expanded', String(isExpanded));
+        }
+
+        mainRow.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') toggleRow();
+        });
+        expandBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(); });
+
+        reqTbody.appendChild(mainRow);
+        reqTbody.appendChild(detailRow);
+        rowElements.push({ req, mainRow, detailRow });
+      });
+
+      function applyReqFilters() {
+        let visibleCount = 0;
+        for (const item of rowElements) {
+          const r = item.req;
+          let match = true;
+          if (filterStatus !== 'all' && r.status !== filterStatus) match = false;
+          if (filterArea !== 'all' && r.area !== filterArea) match = false;
+          if (match && searchQuery) {
+            const txt = [r.id, r.title, r.statement, r.source_quote, r.reason_text].filter(Boolean).join(' ').toLowerCase();
+            if (!txt.includes(searchQuery)) match = false;
+          }
+          item.mainRow.style.display = match ? 'table-row' : 'none';
+          if (!match) item.detailRow.style.display = 'none';
+          if (match) visibleCount++;
+        }
+        countLabel.textContent = `Showing ${visibleCount} of ${requirements.length}`;
+      }
+      mainEl.appendChild(allReqsSec);
+
+      // 5. Scenarios (Probes) Section
+      const probeEntries = Object.values(probes);
+      const probesSec = el('section', { className: 'section-card' },
+        el('div', { className: 'section-header' },
+          el('h2', null, `Scenarios & Probe Evidence (${probeEntries.length})`),
+          el('span', { className: 'section-desc' }, 'Automated browser interactions, assertions & collected artifacts')
+        )
+      );
+
+      const probesContainer = el('div', { style: 'display: flex; flex-direction: column; gap: 0.5rem;' });
+      for (const p of probeEntries) {
+        const pDetails = el('details', { className: 'probe-card', id: `probe-${p.id}` });
+        const pSummary = el('summary', null,
+          el('div', { className: 'probe-summary-left' },
+            el('span', { className: 'mono', style: 'font-weight: 700;' }, p.id),
+            el('span', { className: 'badge badge-area' }, p.area || 'GEN'),
+            kindBadge(p.kind),
+            el('span', { style: 'font-weight: 600;' }, p.title || p.id)
+          ),
+          el('div', { className: 'probe-summary-right' },
+            p.duration_ms != null ? el('span', { className: 'mono', style: 'font-size: 0.8rem; color: var(--text-dim);' }, `${(p.duration_ms / 1000).toFixed(1)}s`) : null,
+            statusBadge(p.status)
+          )
+        );
+        pDetails.appendChild(pSummary);
+
+        const pBody = el('div', { className: 'probe-body' });
+        if (p.error) {
+          pBody.appendChild(el('div', { className: 'warning-box', style: 'margin-bottom: 1rem;' },
+            el('strong', null, 'Scenario Error: '), String(p.error)
+          ));
+        }
+
+        if (p.steps && p.steps.length > 0) {
+          pBody.appendChild(el('h4', { style: 'font-size: 0.9rem; margin-bottom: 0.5rem;' }, 'Executed Steps:'));
+          const stepsList = el('div', { style: 'display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem;' });
+          for (const step of p.steps) {
+            const isOk = step.ok !== false;
+            const stepRow = el('div', { className: `step-item ${isOk ? '' : 'step-failed'}` },
+              el('span', { className: 'step-num' }, `${step.n ?? '•'}.`),
+              el('span', null, step.text || 'Action'),
+              !isOk ? el('span', { className: 'badge badge-fail', style: 'margin-left: 0.5rem;' }, 'FAILED') : null
+            );
+            if (step.detail) stepRow.appendChild(el('span', { style: 'font-size: 0.8rem; color: var(--fail-solid); margin-left: 0.5rem;' }, `(${step.detail})`));
+            stepsList.appendChild(stepRow);
+          }
+          pBody.appendChild(stepsList);
+        }
+
+        // Lazy Screenshots: created ONLY when section is opened!
+        const shotsContainer = el('div', { className: 'shots-gallery' });
+        let screenshotsInstantiated = false;
+        pDetails.addEventListener('toggle', () => {
+          if (pDetails.open && !screenshotsInstantiated) {
+            screenshotsInstantiated = true;
+            if (p.screenshots && p.screenshots.length > 0) {
+              for (const shot of p.screenshots) {
+                shotsContainer.appendChild(el('div', { className: 'shot-thumb-card', onclick: () => openLightbox(shot.src, shot.caption) },
+                  el('img', { className: 'shot-thumb-img', src: shot.src, alt: shot.caption || 'Scenario screenshot', loading: 'lazy' }),
+                  el('div', { className: 'shot-thumb-caption' }, shot.caption || shot.name)
+                ));
+              }
+            }
+          }
+        });
+
+        if (p.screenshots && p.screenshots.length > 0) {
+          pBody.appendChild(el('h4', { style: 'font-size: 0.9rem; margin-top: 0.75rem;' }, `Evidence Screenshots (${p.screenshots.length}):`));
+          pBody.appendChild(shotsContainer);
+        }
+
+        if (p.network && p.network.length > 0) {
+          pBody.appendChild(el('details', { className: 'sub-details' },
+            el('summary', null, `API & Network Calls (${p.network.length})`),
+            el('div', { className: 'sub-content' }, renderNetworkTable(p.network))
+          ));
+        }
+
+        if (p.console && p.console.length > 0) {
+          pBody.appendChild(el('details', { className: 'sub-details' },
+            el('summary', null, `Browser Console Output (${p.console.length})`),
+            el('div', { className: 'sub-content' }, el('pre', { className: 'obs-code' }, p.console.join('\n')))
+          ));
+        }
+
+        if (p.recoveries && p.recoveries.length > 0) {
+          pBody.appendChild(el('div', { className: 'warning-box', style: 'margin-top: 0.75rem;' },
+            el('strong', null, 'Auto-Recoveries: '),
+            el('pre', { className: 'obs-code', style: 'margin-top: 0.5rem;' }, JSON.stringify(p.recoveries, null, 2))
+          ));
+        }
+
+        pDetails.appendChild(pBody);
+        probesContainer.appendChild(pDetails);
+      }
+      probesSec.appendChild(probesContainer);
+      mainEl.appendChild(probesSec);
+
+      // 6. Cost Section
+      const costSec = el('section', { className: 'section-card' },
+        el('div', { className: 'section-header' },
+          el('h2', null, 'Execution Cost & LLM Usage'),
+          el('span', { className: 'section-desc' }, 'Model token telemetry and dollar expenditures by phase')
+        )
+      );
+
+      const costTableWrap = el('div', { className: 'data-table-wrap' });
+      const costTable = el('table', { className: 'data-table' },
+        el('thead', null, el('tr', null,
+          el('th', null, 'Phase'), el('th', null, 'Provider'), el('th', null, 'Models'),
+          el('th', { style: 'text-align: right;' }, 'Calls'), el('th', { style: 'text-align: right;' }, 'Input Tokens'),
+          el('th', { style: 'text-align: right;' }, 'Output Tokens'), el('th', { style: 'text-align: right;' }, 'Cost (USD)')
+        ))
+      );
+      const costTbody = el('tbody');
+      const phases = cost.phases || [];
+      for (const ph of phases) {
+        costTbody.appendChild(el('tr', null,
+          el('td', { style: 'font-weight: 600;' }, ph.phase),
+          el('td', null, el('span', { className: 'badge badge-area' }, ph.provider || '—')),
+          el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, ph.models && ph.models.length > 0 ? ph.models.join(', ') : '—'),
+          el('td', { style: 'text-align: right;' }, formatNum(ph.calls)),
+          el('td', { style: 'text-align: right;' }, formatNum(ph.input_tokens)),
+          el('td', { style: 'text-align: right;' }, formatNum(ph.output_tokens)),
+          el('td', { style: 'text-align: right; font-weight: 600;' }, formatUsd(ph.cost_usd))
+        ));
+      }
+
+      const totCalls = phases.reduce((acc, p) => acc + (p.calls || 0), 0);
+      const totIn = phases.reduce((acc, p) => acc + (p.input_tokens || 0), 0);
+      const totOut = phases.reduce((acc, p) => acc + (p.output_tokens || 0), 0);
+      costTbody.appendChild(el('tr', { style: 'font-weight: 800; background: var(--bg-subtle); border-top: 2px solid var(--border);' },
+        el('td', { colSpan: 3 }, 'Total Auditing Cost'),
+        el('td', { style: 'text-align: right;' }, formatNum(totCalls)),
+        el('td', { style: 'text-align: right;' }, formatNum(totIn)),
+        el('td', { style: 'text-align: right;' }, formatNum(totOut)),
+        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1.05rem;' },
+          cost.total_usd != null ? `$${Number(cost.total_usd).toFixed(6)}` : 'unpriced'
+        )
+      ));
+      costTable.appendChild(costTbody);
+      costTableWrap.appendChild(costTable);
+      costSec.appendChild(costTableWrap);
+
+      if (cost.note) {
+        costSec.appendChild(el('p', { style: 'font-size: 0.85rem; color: var(--text-dim); margin-top: 0.5rem; font-style: italic;' }, `* Note: ${cost.note}`));
+      }
+      mainEl.appendChild(costSec);
+    })();
+  </script>
+</body>
+</html>
