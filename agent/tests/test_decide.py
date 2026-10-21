@@ -61,8 +61,13 @@ def test_client_request_cache_meter(tmp_path):
     for _ in range(2):
         assert c.ask({'x': 1}, {'q': {'type': 'noul'}}, phase='judge')['q']['noul'] == .9
     assert meter.entries[0].input_tokens == 100
-    assert meter.entries[1].cache_hit and meter.entries[1].input_tokens == 0
+    # The cache hit keeps the original usage: free in this run, priced in a cold run.
+    assert meter.entries[1].cache_hit and meter.entries[1].input_tokens == 100
     assert meter.total_cost() == pytest.approx(.0000042)
+    assert meter.total_cost(cold=True) == pytest.approx(.0000084)
+    phase = meter.by_phase()['judge']
+    assert (phase['calls'], phase['cached_calls']) == (1, 1)
+    assert phase['cost_usd'] == pytest.approx(.0000042) and phase['cold_cost_usd'] == pytest.approx(.0000084)
     assert get_decider(Settings(), meter) is None
 
 

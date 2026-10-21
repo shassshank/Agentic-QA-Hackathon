@@ -70,7 +70,10 @@ class DecisionClient:
         try:
             cached = json.loads(path.read_text())
             answers = validate_answers(cached['answers'], questions)
-            self.meter.record(CostEntry(phase=phase, model=cached['model'], cache_hit=True))
+            usage = cached.get('usage') or {}  # absent in caches written before usage was stored
+            self.meter.record(CostEntry(phase=phase, model=cached['model'], cache_hit=True,
+                                        input_tokens=usage.get('input_tokens', 0),
+                                        output_tokens=usage.get('output_tokens', 0)))
             return DecisionAnswers(answers, cached['model'])
         except (OSError, ValueError, KeyError, TypeError):
             pass
@@ -111,7 +114,9 @@ class DecisionClient:
                     self.meter.record(entry)
                     try:
                         path.parent.mkdir(parents=True, exist_ok=True)
-                        path.write_text(json.dumps({'model': data['model'], 'answers': answers}))
+                        path.write_text(json.dumps({'model': data['model'], 'answers': answers,
+                                                    'usage': {'input_tokens': entry.input_tokens,
+                                                              'output_tokens': entry.output_tokens}}))
                     except OSError:
                         pass
                     return DecisionAnswers(answers, data['model'])

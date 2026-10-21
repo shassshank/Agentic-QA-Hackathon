@@ -8,8 +8,8 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..llm import LLMClient
-from ..models import Area, ExtractionResult, OracleType, PrdBullet, RequirementCatalogue, Testability
+from ..llm import CostMeter, LLMClient
+from ..models import Area, CostEntry, ExtractionResult, OracleType, PrdBullet, RequirementCatalogue, Testability
 from .prd import ParsedPrd, clean_inline, parse_prd
 
 PROMPT_VERSION = "interpret-v3.1"
@@ -148,7 +148,9 @@ def interpret(
     *,
     cache_dir: Path,
     use_cache: bool = True,
+    meter: CostMeter | None = None,
 ) -> RequirementCatalogue:
+    """``meter`` receives the original calls as cache hits when the catalogue comes from cache."""
     markdown = prd_path.read_text(encoding="utf-8")
     parsed = parse_prd(markdown)
     model = client.model_for("planner")
@@ -158,13 +160,21 @@ def interpret(
     key = _sha256(markdown, model, PROMPT_VERSION, client.provider, SYSTEM_PROMPT,
                   json.dumps(ExtractionResult.model_json_schema(), sort_keys=True))
     cache_file = _cache_path(cache_dir, key)
+    usage_file = cache_file.with_suffix(".usage.json")
     if use_cache and cache_file.exists():
+        if meter is not None:
+            try:
+                for raw in json.loads(usage_file.read_text()):
+                    meter.record(CostEntry.model_validate({**raw, "cache_hit": True}))
+            except (OSError, ValueError):
+                pass  # usage was not recorded for this cached catalogue
         return RequirementCatalogue.model_validate_json(cache_file.read_text())
 
     prompt = _prompt(parsed)
     response = client.generate(
         prompt, phase="interpret", tier="planner", system=SYSTEM_PROMPT, schema=ExtractionResult, thinking="medium"
     )
+    calls = [response.usage]
     result: ExtractionResult | None = response.parsed
     problems = validate(result, parsed.bullets) if result else ["response did not match the schema"]
 
@@ -178,6 +188,7 @@ def interpret(
             repair_prompt, phase="interpret-repair", tier="planner", system=SYSTEM_PROMPT,
             schema=ExtractionResult, thinking="medium",
         )
+        calls.append(repaired.usage)
         if repaired.parsed is not None:
             repaired_problems = validate(repaired.parsed, parsed.bullets)
             # Keep whichever answer is closer to valid; a repair can regress.
@@ -198,6 +209,7 @@ def interpret(
     )
     cache_file.parent.mkdir(parents=True, exist_ok=True)
     cache_file.write_text(catalogue.model_dump_json(indent=2))
+    usage_file.write_text(json.dumps([c.model_dump() for c in calls if c is not None], indent=2))
     return catalogue
 
 

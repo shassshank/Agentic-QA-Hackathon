@@ -101,21 +101,32 @@ def cost_section(run_dir: Path, verdicts: dict) -> dict:
         for entry in meter.get('entries', []):
             models[entry['phase']].add(entry['model'])
     phases = meter.get('by_phase', {}) if meter else verdicts.get('cost', {})
-    rows, total, unpriced = [], 0.0, False
+    rows, total, cold_total, unpriced, cold_unpriced, untokened = [], 0.0, 0.0, False, False, False
     for phase, row in phases.items():
         names = models.get(phase, set())
         provider = ('typesafe' if any(m.startswith('jev') for m in names) else
                     'gemini' if any(m.startswith('gemini') for m in names) else
                     'gemini' if phase.endswith('_escalation') or phase == 'interpret' else
                     'typesafe' if phase in ('link', 'judge', 'review', 'heal') else '')
-        cost = row.get('cost_usd')
+        cost, cached = row.get('cost_usd'), row.get('cached_calls', 0)
+        # Meters saved before the billed/cold split have no cold figure; fall back to the billed cost.
+        cold = row.get('cold_cost_usd', cost)
         unpriced |= cost is None and bool(row.get('calls'))
+        cold_unpriced |= cold is None and bool(row.get('calls') or cached)
+        untokened |= bool(cached) and not row.get('input_tokens')
         total += cost or 0.0
+        cold_total += cold or 0.0
         rows.append(dict(phase=phase, provider=provider, models=sorted(names), calls=row.get('calls', 0),
-                         input_tokens=row.get('input_tokens', 0), output_tokens=row.get('output_tokens', 0),
-                         cost_usd=cost))
-    return dict(phases=rows, total_usd=round(total, 6), complete=not unpriced,
-                note='Some calls use models without a configured price; the total is a lower bound.' if unpriced else None)
+                         cached_calls=cached, input_tokens=row.get('input_tokens', 0),
+                         output_tokens=row.get('output_tokens', 0) + row.get('thinking_tokens', 0),
+                         cost_usd=cost, cold_cost_usd=cold))
+    notes = []
+    if unpriced or cold_unpriced:
+        notes.append('Some calls use models without a configured price; totals are lower bounds.')
+    if untokened:
+        notes.append('Some cached answers predate usage recording, so the cold estimate is a lower bound.')
+    return dict(phases=rows, total_usd=round(total, 6), cold_total_usd=round(cold_total, 6),
+                complete=not (unpriced or cold_unpriced or untokened), note=' '.join(notes) or None)
 
 
 def build(run_dir: Path, catalogue: RequirementCatalogue, *, screenshots: bool = True) -> dict:

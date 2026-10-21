@@ -41,11 +41,16 @@ def render_markdown(data: dict) -> str:
     for r in data['requirements']:
         lines.append(f"| {r['id']} | {r['title']} | {r['status']} | {r['reason_text'] or ''} |")
     c = data['cost']
-    lines += ['', '## Cost', '', '| Phase | Provider | Calls | Input tokens | Cost (USD) |', '|---|---|---|---|---|']
+    usd = lambda v: 'unpriced' if v is None else f'{v:.6f}'
+    lines += ['', '## Cost', '',
+              '| Phase | Provider | Calls | Cached | Input tokens | Output tokens | This run (USD) | Cold run (USD) |',
+              '|---|---|---|---|---|---|---|---|']
     for p in c['phases']:
-        cost = 'unpriced' if p['cost_usd'] is None else f"{p['cost_usd']:.6f}"
-        lines.append(f"| {p['phase']} | {p['provider']} | {p['calls']} | {p['input_tokens']} | {cost} |")
-    lines += ['', f"Total: ${c['total_usd']:.6f}" + (f" ({c['note']})" if c['note'] else ''), '']
+        lines.append(f"| {p['phase']} | {p['provider']} | {p['calls']} | {p.get('cached_calls', 0)} | "
+                     f"{p['input_tokens']} | {p.get('output_tokens', 0)} | {usd(p['cost_usd'])} | "
+                     f"{usd(p.get('cold_cost_usd', p['cost_usd']))} |")
+    lines += ['', f"This run: ${c['total_usd']:.6f} · cold run (no cache): ${c.get('cold_total_usd', c['total_usd']):.6f}"
+              + (f" ({c['note']})" if c['note'] else ''), '']
     return '\n'.join(lines)
 
 

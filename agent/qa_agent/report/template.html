@@ -790,39 +790,45 @@
       const costTable = el('table', { className: 'data-table' },
         el('thead', null, el('tr', null,
           el('th', null, 'Phase'), el('th', null, 'Provider'), el('th', null, 'Models'),
-          el('th', { style: 'text-align: right;' }, 'Calls'), el('th', { style: 'text-align: right;' }, 'Input Tokens'),
-          el('th', { style: 'text-align: right;' }, 'Output Tokens'), el('th', { style: 'text-align: right;' }, 'Cost (USD)')
+          el('th', { style: 'text-align: right;' }, 'Calls'), el('th', { style: 'text-align: right;' }, 'Cached'),
+          el('th', { style: 'text-align: right;' }, 'Input Tokens'), el('th', { style: 'text-align: right;' }, 'Output Tokens'),
+          el('th', { style: 'text-align: right;' }, 'This run (USD)'), el('th', { style: 'text-align: right;' }, 'Cold run (USD)')
         ))
       );
       const costTbody = el('tbody');
       const phases = cost.phases || [];
+      const coldOf = p => (p.cold_cost_usd !== undefined ? p.cold_cost_usd : p.cost_usd);
       for (const ph of phases) {
         costTbody.appendChild(el('tr', null,
           el('td', { style: 'font-weight: 600;' }, ph.phase),
           el('td', null, el('span', { className: 'badge badge-area' }, ph.provider || '—')),
           el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, ph.models && ph.models.length > 0 ? ph.models.join(', ') : '—'),
           el('td', { style: 'text-align: right;' }, formatNum(ph.calls)),
+          el('td', { style: 'text-align: right;' }, formatNum(ph.cached_calls || 0)),
           el('td', { style: 'text-align: right;' }, formatNum(ph.input_tokens)),
           el('td', { style: 'text-align: right;' }, formatNum(ph.output_tokens)),
-          el('td', { style: 'text-align: right; font-weight: 600;' }, formatUsd(ph.cost_usd))
+          el('td', { style: 'text-align: right; font-weight: 600;' }, formatUsd(ph.cost_usd)),
+          el('td', { style: 'text-align: right; font-weight: 600;' }, formatUsd(coldOf(ph)))
         ));
       }
 
-      const totCalls = phases.reduce((acc, p) => acc + (p.calls || 0), 0);
-      const totIn = phases.reduce((acc, p) => acc + (p.input_tokens || 0), 0);
-      const totOut = phases.reduce((acc, p) => acc + (p.output_tokens || 0), 0);
+      const sum = key => phases.reduce((acc, p) => acc + (p[key] || 0), 0);
+      const usd = v => (v != null ? `$${Number(v).toFixed(6)}` : 'unpriced');
       costTbody.appendChild(el('tr', { style: 'font-weight: 800; background: var(--bg-subtle); border-top: 2px solid var(--border);' },
         el('td', { colSpan: 3 }, 'Total Auditing Cost'),
-        el('td', { style: 'text-align: right;' }, formatNum(totCalls)),
-        el('td', { style: 'text-align: right;' }, formatNum(totIn)),
-        el('td', { style: 'text-align: right;' }, formatNum(totOut)),
+        el('td', { style: 'text-align: right;' }, formatNum(sum('calls'))),
+        el('td', { style: 'text-align: right;' }, formatNum(sum('cached_calls'))),
+        el('td', { style: 'text-align: right;' }, formatNum(sum('input_tokens'))),
+        el('td', { style: 'text-align: right;' }, formatNum(sum('output_tokens'))),
+        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1.05rem;' }, usd(cost.total_usd)),
         el('td', { style: 'text-align: right; color: var(--primary); font-size: 1.05rem;' },
-          cost.total_usd != null ? `$${Number(cost.total_usd).toFixed(6)}` : 'unpriced'
-        )
+          usd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd))
       ));
       costTable.appendChild(costTbody);
       costTableWrap.appendChild(costTable);
       costSec.appendChild(costTableWrap);
+      costSec.appendChild(el('p', { style: 'font-size: 0.85rem; color: var(--text-dim); margin-top: 0.5rem;' },
+        '"This run" is what was billed; answers reused from the local cache are free. "Cold run" prices every call as if nothing was cached — the cost of auditing a new site.'));
 
       if (cost.note) {
         costSec.appendChild(el('p', { style: 'font-size: 0.85rem; color: var(--text-dim); margin-top: 0.5rem; font-style: italic;' }, `* Note: ${cost.note}`));

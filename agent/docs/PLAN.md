@@ -264,3 +264,11 @@ Jev is used during development for small routing and triage judgments (noted in 
   oracles catch every injected defect; all misses are Jev-only links in the 0.45-0.79 band, which escalate to Gemini
   by design. Details in docs/P9_IMPLEMENTATION.md. Review (codex, 8 findings) fixed in 03a8915.
   - Open: escalated (Gemini) eval run; jev-1.14.0 comparison (harness run --jev-models).
+- P10 in progress (2026-10-21): architecture README (agent/README.md), walkthrough script
+  (docs/VIDEO_SCRIPT.md), exported local report (reports/local-2026-10-21/: 38 passed, 5 failed, 11 unverified of
+  54; all 5 failures trace to the zero/negative amount, overdraft and end-date filter defects; cold run $0.177).
+  Cost report fixed: cached Jev and interpretation answers keep their usage, Gemini models are priced, and the
+  report shows billed vs cold-run cost.
+  - Note: `qa-agent run` re-interprets when the prompt or schema changed since the cached catalogue, so the
+    catalogue can differ between runs (67 → 54 requirements here). Pin it for the hosted run by reusing the cache.
+  - Open: hosted run once the URL arrives (copy the report into reports/), recording the video.

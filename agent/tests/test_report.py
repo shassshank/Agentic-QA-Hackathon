@@ -95,6 +95,12 @@ def test_build_and_write(tmp_path):
     assert probe['screenshots'][0]['caption'] == 'Transfer result'
     assert data['summary']['by_area']['GEN'] == {'passed': 0, 'failed': 1, 'unverified': 1}
     assert data['cost']['phases'][0]['provider'] == 'typesafe' and data['cost']['complete']
+    assert data['cost']['cold_total_usd'] == data['cost']['total_usd']  # pre-split meter: cold falls back to billed
+    (run / 'cost.json').write_text(json.dumps({'entries': [], 'by_phase': {'judge': dict(
+        calls=0, cached_calls=4, input_tokens=0, output_tokens=0, cost_usd=0.0, cold_cost_usd=0.0)}}))
+    lower = build(run, cat, screenshots=False)['cost']
+    assert not lower['complete'] and 'lower bound' in lower['note']  # cached answers without recorded usage
+    (run / 'cost.json').unlink()
     assert 'GEN-001' in render_markdown(data)
     paths = write_report(run, cat)
     assert paths['html'].read_text().count('data:image/jpeg') == 1

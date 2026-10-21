@@ -113,7 +113,8 @@ def interpret_command(
 
     settings = load_settings()
     meter = CostMeter()
-    catalogue = interpret(prd, get_client(settings, meter), cache_dir=AGENT_ROOT / ".cache", use_cache=not no_cache)
+    catalogue = interpret(prd, get_client(settings, meter), cache_dir=AGENT_ROOT / ".cache", use_cache=not no_cache,
+                          meter=meter)
     save(catalogue, out)
 
     table = Table(title=f"{len(catalogue.requirements)} requirements from {len(catalogue.bullets)} PRD bullets")
@@ -127,7 +128,7 @@ def interpret_command(
     console.print(f"Model: {catalogue.model}  |  warnings: {len(catalogue.warnings)}")
     for warning in catalogue.warnings:
         console.print(f"  [yellow]! {warning}[/]")
-    if meter.entries:
+    if any(not e.cache_hit for e in meter.entries):
         for entry in meter.entries:
             console.print(
                 f"LLM {entry.phase}: {entry.model} in={entry.input_tokens} out={entry.output_tokens} "
@@ -341,7 +342,7 @@ def run_command(
         client = _CachedInterpreter(settings)
     run_dir = out or settings.runs_dir / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
-    catalogue = interpret(prd, client, cache_dir=AGENT_ROOT / ".cache")
+    catalogue = interpret(prd, client, cache_dir=AGENT_ROOT / ".cache", meter=meter)
     save(catalogue, run_dir / "requirements.json")
     probe_command(url=url, out=run_dir, only=None, skip_mutating=False, headed=False, list_only=False, chaos="")
     verify_command(run=run_dir)

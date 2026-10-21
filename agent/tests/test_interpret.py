@@ -111,6 +111,26 @@ def test_interpret_caches_by_prd_and_model(tmp_path):
     assert first.requirements == second.requirements and first.warnings == []
 
 
+def test_cached_catalogue_reports_original_usage(tmp_path):
+    from qa_agent.llm import CostMeter
+
+    prd = tmp_path / "prd.md"
+    prd.write_text("# T\n\n## S\n\n- Logging out returns the user to the landing page.\n")
+    client = FakeClient(
+        ExtractionResult(requirements=[_req("SES-001", Area.SES, ["B01"], "Logging out returns the user")])
+    )
+    client.generate = lambda prompt, **kw: LLMResponse(
+        text=client.result.model_dump_json(), parsed=client.result, model="gemini-3.8-flash",
+        usage=CostEntry(phase=kw["phase"], model="gemini-3.8-flash", input_tokens=1000, output_tokens=2000))
+    cold, warm = CostMeter(), CostMeter()
+    interpret(prd, client, cache_dir=tmp_path / "cache", meter=cold)
+    assert cold.entries == []  # the live call is metered by the client itself
+    interpret(prd, client, cache_dir=tmp_path / "cache", meter=warm)
+    assert [(e.cache_hit, e.input_tokens) for e in warm.entries] == [(True, 1000)]
+    assert warm.total_cost() == 0
+    assert warm.total_cost(cold=True) == pytest.approx((1000 * .75 + 2000 * 3.75) / 1e6)
+
+
 def test_interpret_records_unrepaired_problems_as_warnings(tmp_path):
     prd = tmp_path / "prd.md"
     prd.write_text("# T\n\n## S\n\n- Alpha behavior.\n- Beta behavior.\n")
