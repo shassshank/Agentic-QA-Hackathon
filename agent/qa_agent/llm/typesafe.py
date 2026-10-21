@@ -43,6 +43,11 @@ def validate_answers(answers, questions):
                     or not isinstance(probabilities, dict) or answer['choice'] not in probabilities
                     or any(k not in options or not probability(v) for k, v in probabilities.items())):
                 raise ValueError('invalid choice')
+            # Thresholds read the distribution, so it must be a distribution and agree with the chosen option;
+            # otherwise "unsure" with P(violates)=.95 would keep a failure.
+            if (abs(sum(probabilities.values()) - 1) > .05
+                    or probabilities[answer['choice']] < max(probabilities.values()) - 1e-6):
+                raise ValueError('inconsistent choice distribution')
         else:
             raise ValueError('unsupported question')
     return answers
@@ -59,9 +64,9 @@ class DecisionClient:
         self._key = api_key
         self._http = httpx.Client(transport=transport, timeout=timeout_s)
 
-    def ask(self, state, questions: dict, *, phase: str) -> dict:
+    def ask(self, state, questions: dict, *, phase: str, cache_dir: Path | None = None) -> dict:
         from ..verdict.link import key_for
-        path = self.cache_dir / 'decide' / phase / f'{key_for(self.model, state, questions)}.json'
+        path = (cache_dir or self.cache_dir) / 'decide' / phase / f'{key_for(self.model, state, questions)}.json'
         try:
             cached = json.loads(path.read_text())
             answers = validate_answers(cached['answers'], questions)
@@ -76,8 +81,8 @@ class DecisionClient:
                 response = self._http.post('https://api.typesafe.ai/v1/systemone',
                                            headers={'Authorization': f'Bearer {self._key}'},
                                            json={'model': self.model, 'state': state, 'questions': questions})
-            except (httpx.TimeoutException, httpx.NetworkError):
-                failure = 'timeout or connection error'
+            except httpx.TransportError as exc:  # timeouts, connection and protocol errors (e.g. server disconnect)
+                failure = f'transport error: {type(exc).__name__}'
             else:
                 if response.status_code in (429, 529):
                     failure = f'HTTP {response.status_code}'
@@ -114,12 +119,14 @@ class DecisionClient:
                 time.sleep(delay)
         raise DecisionUnavailable(failure) from None
 
-    def ask_many(self, requests, *, phase):
+    def ask_many(self, requests, *, phase, cache_dir: Path | None = None):
         def ask(request):
             try:
-                return self.ask(*request, phase=phase)
+                return self.ask(*request, phase=phase, cache_dir=cache_dir)
             except DecisionUnavailable as exc:
                 return exc
+            except Exception as exc:  # noqa: BLE001 - any other failure is per-request uncertainty, not a crash
+                return DecisionUnavailable(f'{type(exc).__name__}: {exc}'.replace(self._key, '[redacted]')[:200])
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
             return list(pool.map(ask, requests))
 
@@ -137,6 +144,7 @@ class EscalationClient:
 
 
 def ask_many(decider, requests, *, phase, cache_dir):
+    # The cache root travels with the call; mutating the shared client would leak it into concurrent batches.
     if isinstance(decider, DecisionClient):
-        decider.cache_dir = cache_dir
+        return decider.ask_many(requests, phase=phase, cache_dir=cache_dir)
     return decider.ask_many(requests, phase=phase)

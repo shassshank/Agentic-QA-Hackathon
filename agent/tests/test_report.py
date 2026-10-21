@@ -85,7 +85,8 @@ def test_build_and_write(tmp_path):
     run, cat = _run(tmp_path), catalogue(2)
     data = build(run, cat)
     failed = data['requirements'][0]
-    assert failed['failure']['steps'] == ['Click the "Enter demo" button']
+    assert failed['failure']['steps'] == ['Click the "Enter demo" button']  # from the structured evidence steps
+    assert data['probes']['gen.labels']['steps'][0]['text'] == failed['failure']['steps'][0]
     assert failed['statement'] == 'Controls are clear' and failed['checks'][0]['expected'] == 'Readable labels'
     assert data['requirements'][1]['reason_text'].startswith('No automated check')
     probe = data['probes']['gen.labels']

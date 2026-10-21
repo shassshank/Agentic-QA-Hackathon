@@ -67,16 +67,21 @@ def evaluate(b: Builder) -> None:
         b.add(behaviour, 'balances', delta == expected if readable and amount is not None
               and source in bb and dest in bb else None, 'source -amount, destination +amount, others unchanged',
               {'expected': expected, 'deltas': delta}, sensitive=True)
+    # The double-submit probe's repeated clicks are the behaviour under test: if they apply several transfers, that is
+    # a duplicate-submit failure, not a non-atomic transfer or a bad single record, so its effects feed only
+    # general.duplicate_submit (found by the mutant evaluation: they had failed TRF atomicity and success timing).
+    repeated = pid == 'trf.double_submit'
     # Both sides must move by exactly the requested amount: equal-and-opposite alone also holds for no movement
     # or for a wrong amount. (Intermediate partial states are not observable here; that part stays unclaimed.)
-    b.add('transfer.atomic', 'deltas', amount is not None and delta[source] == -amount and delta[dest] == amount and
-          all(v == 0 for k, v in delta.items() if k not in (source, dest))
-          if readable and source in delta and dest in delta else None,
-          'source -amount and destination +amount together, others unchanged',
-          {'amount': amount, 'deltas': delta}, sensitive=True)
-    b.add('transfer.record', 'count', len(matching) == 1 if 'rows' in before and 'rows' in after else None,
-          'exactly one new attempt row', [key(r) for r in matching], sensitive=True)
-    for i, row in enumerate(matching or rows):
+    if not repeated:
+        b.add('transfer.atomic', 'deltas', amount is not None and delta[source] == -amount and delta[dest] == amount and
+              all(v == 0 for k, v in delta.items() if k not in (source, dest))
+              if readable and source in delta and dest in delta else None,
+              'source -amount and destination +amount together, others unchanged',
+              {'amount': amount, 'deltas': delta}, sensitive=True)
+        b.add('transfer.record', 'count', len(matching) == 1 if 'rows' in before and 'rows' in after else None,
+              'exactly one new attempt row', [key(r) for r in matching], sensitive=True)
+    for i, row in enumerate([] if repeated else matching or rows):
         conditions = {
             'type': (row.get('type') or '').lower() == 'transfer',
             'status': (row.get('status') or '').lower() == 'completed',
@@ -97,7 +102,9 @@ def evaluate(b: Builder) -> None:
               bool(matching[0].get('description')) if 'rows' in after else None,
               'empty memo accepted with non-empty row description', matching, sensitive=True)
     timeline = attempt.get('timeline')
-    if timeline is not None:
+    if repeated:
+        pass
+    elif timeline is not None:
         # Correlate with this attempt's own committed POST, and require that the first read after the success
         # message already shows the transfer persisted (balances moved by the amount).
         ours = {p.get('url') for p in posts if 200 <= (p.get('status') or 0) < 300}

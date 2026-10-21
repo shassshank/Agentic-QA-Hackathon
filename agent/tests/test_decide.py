@@ -158,7 +158,7 @@ def test_link_multiple_and_none(tmp_path):
     cat = catalogue(2)
     # Stage 1 ranks families; stage 2 verifies each group of the top families with a noul.
     decider = Decider([{'a0': choice('general.labels', .45, other=.3, none=.25)}, {'a0': choice('none', .8)}],
-                      [{'tests': noul(.9)}, {'tests': noul(.85)}])
+                      [{'tests': noul(.9), 'gap': noul(0)}, {'tests': noul(.85), 'gap': noul(0)}])
     result = link_requirements_jev(cat, checks, decider, None, cache_dir=tmp_path)
     assert result.links[0].families == ['general.labels', 'other']
     assert result.links[0].coverage == 'full'
@@ -168,7 +168,7 @@ def test_link_multiple_and_none(tmp_path):
 
 def test_link_judged_group_candidate(tmp_path):
     checks = [check(), check('unknown', needs_judge=True, id='general.labels.wording')]
-    decider = Decider([{'a0': choice('general.labels', .9)}], [{'tests': noul(.4)}, {'tests': noul(.95)}])
+    decider = Decider([{'a0': choice('general.labels', .9)}], [{'tests': noul(.4), 'gap': noul(0)}, {'tests': noul(.95), 'gap': noul(0)}])
     result = link_requirements_jev(catalogue(), checks, decider, None, cache_dir=tmp_path)
     # family, then its judged wording group; the family's checks are state, not question text
     assert [s['item']['family']['name'] for s, _ in decider.calls[1][0]] == ['general.labels', 'general.labels.wording']
@@ -177,14 +177,14 @@ def test_link_judged_group_candidate(tmp_path):
 
 def test_link_rejected_groups(tmp_path):
     checks = [check(), check(behaviour='other', id='other.value')]
-    decider = Decider([{'a0': choice('general.labels', .9, other=.1)}], [{'tests': noul(.3)}, {'tests': noul(.79)}])
+    decider = Decider([{'a0': choice('general.labels', .9, other=.1)}], [{'tests': noul(.3), 'gap': noul(0)}, {'tests': noul(.79), 'gap': noul(0)}])
     result = link_requirements_jev(catalogue(), checks, decider, None, cache_dir=tmp_path)
     assert result.links[0].coverage == 'none'  # confident ranking alone never links
 
 
 def test_link_subset_merge(tmp_path):
     gemini = FakeClient(links())
-    decider = Decider([{'a0': choice('general.labels', .3)}, {'a0': choice('none', .9)}], [{'tests': noul(.5)}])
+    decider = Decider([{'a0': choice('general.labels', .3)}, {'a0': choice('none', .9)}], [{'tests': noul(.5), 'gap': noul(0)}])
     result = link_requirements_jev(catalogue(2), [check()], decider, gemini, cache_dir=tmp_path)
     assert result.links[0].coverage == 'full' and result.links[1].coverage == 'none'
     assert 'GEN-002' not in gemini.calls[0][0]
@@ -201,7 +201,7 @@ def test_link_partial_and_not_testable(tmp_path):
     cat = catalogue(assertions=[Assertion(description='a', oracle='judge'), Assertion(description='b', oracle='judge')])
     result = link_requirements_jev(cat, [check()], Decider([{'a0': choice('general.labels', .5),
                                                           'a1': choice('general.labels', .2)}],
-                                                        [{'tests': noul(.9)}, {'tests': noul(.2)}]),
+                                                        [{'tests': noul(.9), 'gap': noul(0)}, {'tests': noul(.2), 'gap': noul(0)}]),
                                    None, cache_dir=tmp_path)
     assert result.links[0].coverage == 'partial'
     decider = Decider([])
@@ -221,7 +221,7 @@ def test_heal(tmp_path, option, p, accepted):
 def test_jev_pipeline_and_outage(tmp_path):
     write_checks(tmp_path, [check()])
     report = run_verdict(tmp_path, catalogue(), decider=Decider([{'a0': choice('general.labels', .8)}],
-                                                                [{'tests': noul(.9)}]),
+                                                                [{'tests': noul(.9), 'gap': noul(0)}]),
                          cache_dir=tmp_path, no_confirm=True)
     assert report.summary['passed'] == 1
     report = run_verdict(tmp_path, catalogue(), decider=Decider([DecisionUnavailable('offline')]),
@@ -323,3 +323,36 @@ def test_cli_none_disables_decider(tmp_path, monkeypatch):
     result = CliRunner().invoke(cli.app, ['verdict', '--run', str(tmp_path), '--catalogue', str(cat),
                                           '--link-file', str(link), '--no-judge', '--no-confirm', '--decider', 'none'])
     assert result.exit_code == 0, result.output
+
+
+def test_link_related_families_and_confident_gap(tmp_path):
+    checks = [check(), check(behaviour='other', id='other.value')]
+    # A primary family (.9) brings in a related one (.6); a lone .6 would not link.
+    decider = Decider([{'a0': choice('general.labels', .7, other=.3)}],
+                      [{'tests': noul(.9), 'gap': noul(.2)}, {'tests': noul(.6), 'gap': noul(.1)}])
+    result = link_requirements_jev(catalogue(), checks, decider, None, cache_dir=tmp_path)
+    assert result.links[0].families == ['general.labels', 'other'] and result.links[0].coverage == 'full'
+    # Every primary confidently leaves part of the assertion unverified -> partial, never full.
+    decider = Decider([{'a0': choice('general.labels', .7, other=.3)}],
+                      [{'tests': noul(.9), 'gap': noul(.95)}, {'tests': noul(.2), 'gap': noul(0)}])
+    assert link_requirements_jev(catalogue(), checks, decider, None, cache_dir=tmp_path).links[0].coverage == 'partial'
+
+
+def test_inconsistent_choice_distribution_rejected(tmp_path):
+    bad = dict(type='choice', choice='unsure', confidence=0, probabilities={'violates': .95, 'unsure': .95})
+    c, _ = client(tmp_path, lambda r: response({'q': bad}))
+    with pytest.raises(DecisionUnavailable):
+        c.ask({}, {'q': {'type': 'choice', 'criteria': {'violates': None, 'unsure': None}}}, phase='review')
+    assert not list(tmp_path.rglob('*.json'))
+
+
+def test_protocol_error_and_per_call_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr('qa_agent.llm.typesafe.time.sleep', lambda s: None)
+    def disconnect(request):
+        raise httpx.RemoteProtocolError('Server disconnected without sending a response')
+    c, _ = client(tmp_path, disconnect)
+    assert isinstance(c.ask_many([({}, {'q': {'type': 'noul'}})], phase='judge')[0], DecisionUnavailable)
+    ok, _ = client(tmp_path, lambda r: response({'q': noul(.9)}))
+    from qa_agent.llm.typesafe import ask_many
+    ask_many(ok, [({'x': 1}, {'q': {'type': 'noul'}})], phase='judge', cache_dir=tmp_path / 'run-a')
+    assert list((tmp_path / 'run-a').rglob('*.json')) and ok.cache_dir == tmp_path  # client left unchanged

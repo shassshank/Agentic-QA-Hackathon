@@ -319,6 +319,16 @@ def test_duplicate_submit_judged_by_effect_not_request_count():
     assert selected('trf.double_submit', facts, 'general.duplicate_submit.effects').status == 'pass'
 
 
+def test_double_submit_feeds_only_duplicate_submit_families():
+    # Several applied transfers from repeated clicks are a duplicate-submit failure, not an atomicity, record or
+    # success-timing failure of a single transfer.
+    ids = {c.id for c in report('trf.double_submit', transfer()).checks}
+    assert not any(i.startswith(('transfer.atomic', 'transfer.record', 'transfer.success_after_commit')) for i in ids)
+    assert 'general.duplicate_submit.effects' in ids
+    slow = {c.id for c in report('trf.slow_submit', transfer()).checks}
+    assert 'transfer.atomic.deltas' in slow and 'transfer.success_after_commit.timeline' in slow
+
+
 def test_atomic_requires_the_requested_amount():
     facts = transfer()
     for account in facts['after']['accounts']:

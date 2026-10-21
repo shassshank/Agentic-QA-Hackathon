@@ -1,0 +1,243 @@
+{
+  "catalogue_sha": "d91445546c22226654997d2302e2aba5b4d001d2bd246997c2df723f36aa5a33",
+  "variants": [
+    {
+      "name": "shipped",
+      "description": "Shipped defects with evaluation CORS origin.",
+      "patches": [
+        {
+          "file": "backend/demobank/main.py",
+          "find": "allow_origins=[\"http://localhost:5173\"]",
+          "replace": "allow_origins=[\"http://localhost:5173\", \"http://localhost:5273\"]",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "TRF-008",
+        "TRF-009",
+        "TRF-015",
+        "HIS-008",
+        "HIS-010"
+      ],
+      "may_fail": [
+        "TRF-012",
+        "TRF-021"
+      ]
+    },
+    {
+      "name": "fixed",
+      "description": "Fix KI-01 through KI-04.",
+      "patches": [
+        {
+          "file": "backend/demobank/main.py",
+          "find": "allow_origins=[\"http://localhost:5173\"]",
+          "replace": "allow_origins=[\"http://localhost:5173\", \"http://localhost:5273\"]",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/main.py",
+          "find": "datetime.combine(end_date, time.min, PACIFIC)",
+          "replace": "datetime.combine(end_date + timedelta(days=1), time.min, PACIFIC)",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/main.py",
+          "find": "        amount = Decimal(payload.amount)\n",
+          "replace": "        amount = Decimal(payload.amount)\n        if amount <= 0:\n            raise ApiError(422, \"invalid_amount\", \"Amount must be greater than zero.\")\n",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/repository.py",
+          "find": "                    SELECT id\n                    FROM accounts",
+          "replace": "                    SELECT id, balance\n                    FROM accounts",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/repository.py",
+          "find": "            await conn.execute(\n                \"UPDATE accounts SET balance = balance - %s WHERE id = %s\",",
+          "replace": "            source = next(row for row in locked if row[\"id\"] == source_account_id)\n            if amount > source[\"balance\"]:\n                from .main import ApiError\n                raise ApiError(409, \"insufficient_funds\", \"Amount exceeds available balance.\")\n\n            await conn.execute(\n                \"UPDATE accounts SET balance = balance - %s WHERE id = %s\",",
+          "count": 1
+        }
+      ],
+      "must_fail": [],
+      "may_fail": [],
+      "now_correct": [
+        "TRF-008",
+        "TRF-009",
+        "TRF-015",
+        "HIS-008",
+        "HIS-010"
+      ]
+    },
+    {
+      "name": "m-mask",
+      "base": "shipped",
+      "description": "Expose synthetic full account identifiers.",
+      "patches": [
+        {
+          "file": "frontend/src/components/AccountCard.tsx",
+          "find": "{account.masked_number}",
+          "replace": "{`10000000${account.masked_number.replace(/\\D/g, \"\")}`}",
+          "count": 1
+        },
+        {
+          "file": "frontend/src/pages/AccountDetailPage.tsx",
+          "find": "{account.masked_number}",
+          "replace": "{`10000000${account.masked_number.replace(/\\D/g, \"\")}`}",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "ACC-003",
+        "ACC-006"
+      ],
+      "may_fail": [
+        "PRO-002"
+      ]
+    },
+    {
+      "name": "m-logout",
+      "base": "shipped",
+      "description": "Logout reports success but neither revokes the server session nor clears the session cookie (revoking alone is invisible to a browser, because the cookie is deleted).",
+      "patches": [
+        {
+          "file": "backend/demobank/main.py",
+          "find": "            await _repo(request).revoke_session(hash_session_token(token, _settings(request).session_secret))",
+          "replace": "            pass",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/main.py",
+          "find": "        response.delete_cookie(",
+          "replace": "        (lambda *args, **kwargs: None)(",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "SES-005",
+        "SES-007"
+      ],
+      "may_fail": [
+        "SES-004"
+      ]
+    },
+    {
+      "name": "m-typefilter",
+      "base": "shipped",
+      "description": "Ignore transaction type filtering.",
+      "patches": [
+        {
+          "file": "backend/demobank/repository.py",
+          "find": "        if transaction_type is not None:",
+          "replace": "        if False:",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "HIS-006"
+      ],
+      "may_fail": [
+        "HIS-009"
+      ]
+    },
+    {
+      "name": "m-sameacct",
+      "base": "shipped",
+      "description": "Accept a same-account transfer.",
+      "patches": [
+        {
+          "file": "backend/demobank/main.py",
+          "find": "        if payload.source_account_id == payload.destination_account_id:",
+          "replace": "        if False:",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/repository.py",
+          "find": "            if len(locked) != 2:",
+          "replace": "            if len(locked) != len({source_account_id, destination_account_id}):",
+          "count": 1
+        },
+        {
+          "file": "backend/demobank/repository.py",
+          "find": "                    (%s, %s, %s, %s, %s)\n                \"\"\",",
+          "replace": "                    (%s, %s, %s, %s, %s)\n                ON CONFLICT (transaction_id, account_id) DO NOTHING\n                \"\"\",",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "TRF-005"
+      ],
+      "may_fail": [
+        "TRF-006",
+        "TRF-021"
+      ]
+    },
+    {
+      "name": "m-email",
+      "base": "shipped",
+      "description": "Expose a synthetic full email on profile.",
+      "patches": [
+        {
+          "file": "frontend/src/pages/ProfilePage.tsx",
+          "find": "{me.masked_email}",
+          "replace": "{\"alex.morgan@example.com\"}",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "PRO-001"
+      ],
+      "may_fail": [
+        "PRO-002"
+      ]
+    },
+    {
+      "name": "m-decimals",
+      "base": "shipped",
+      "description": "Drop dashboard balance cents. Knock-on (may_fail): a 0.01 transfer then shows no visible balance change, so balance-based transfer checks (TRF-013, TRF-017, TRF-020) legitimately fail from the UI.",
+      "patches": [
+        {
+          "file": "frontend/src/components/AccountCard.tsx",
+          "find": "formatMoney(account.balance, account.currency)",
+          "replace": "formatMoney(account.balance, account.currency).replace(/\\.\\d{2}$/, \"\")",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "ACC-005"
+      ],
+      "may_fail": [
+        "ACC-009",
+        "TRF-013",
+        "TRF-017",
+        "TRF-020"
+      ]
+    },
+    {
+      "name": "m-dupsubmit",
+      "base": "shipped",
+      "description": "Allow pending transfer submissions without deduplication.",
+      "patches": [
+        {
+          "file": "frontend/src/pages/TransferPage.tsx",
+          "find": "    if (submitting) return;\n",
+          "replace": "",
+          "count": 1
+        },
+        {
+          "file": "frontend/src/pages/TransferPage.tsx",
+          "find": " disabled={submitting}",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "must_fail": [
+        "GEN-007"
+      ],
+      "may_fail": [
+        "TRF-018",
+        "GEN-006"
+      ]
+    }
+  ]
+}

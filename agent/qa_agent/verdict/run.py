@@ -49,14 +49,22 @@ def run_verdict(run_dir: Path, catalogue: RequirementCatalogue, client=None, *, 
             warnings.extend(judge_warnings)
         except Exception as exc:
             warnings.append(f'Judge unavailable: {type(exc).__name__}: {exc}')
+    # Persist what the decisions were based on, so the report shows judged wording and link evidence rather than
+    # the pre-judge checks.json.
+    (run_dir / 'checks.judged.json').write_text(report.model_copy(update={'checks': checks}).model_dump_json(indent=2))
+    (run_dir / 'links.json').write_text(links.model_dump_json(indent=2))
     confirmations = {}
     if not unavailable and not no_confirm:
         confirmations = confirm_failures(checks, report.base_url, run_dir, runner=runner)
     verdicts = aggregate(catalogue, links, checks, confirmations, llm_unavailable=unavailable, run_dir=run_dir)
     if not unavailable and not no_judge and (client is not None or decider is not None):
-        verdicts, review_warnings = (review_failures_jev(verdicts, catalogue, decider, client, cache_dir=cache_dir)
-                                    if decider else review_failures(verdicts, catalogue, client, cache_dir=cache_dir))
-        warnings.extend(review_warnings)
+        try:
+            verdicts, review_warnings = (review_failures_jev(verdicts, catalogue, decider, client, cache_dir=cache_dir)
+                                        if decider else review_failures(verdicts, catalogue, client, cache_dir=cache_dir))
+            warnings.extend(review_warnings)
+        except Exception as exc:  # noqa: BLE001 - a review crash leaves failures unreviewed, and the report is still saved
+            warnings.append(f'Failure review unavailable: {type(exc).__name__}: {exc}')
+            verdicts = mark_unreviewed(verdicts)
     else:
         verdicts = mark_unreviewed(verdicts)
     counts = Counter(v.status for v in verdicts)

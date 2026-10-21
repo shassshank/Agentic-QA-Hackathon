@@ -593,6 +593,15 @@
           ));
         }
 
+        if (req.reason_text || (req.link && req.link.rationale)) {
+          detailContainer.appendChild(el('div', { style: 'font-size: 0.85rem;' },
+            req.reason_text ? el('div', null, el('strong', null, 'Why: '), req.reason_text) : null,
+            req.link && req.link.rationale ? el('div', { style: 'margin-top: 0.25rem;' },
+              el('strong', null, 'How checks were linked: '),
+              el('span', { className: 'obs-code', style: 'display: inline-block;' }, req.link.rationale)) : null
+          ));
+        }
+
         if (req.checks && req.checks.length > 0) {
           detailContainer.appendChild(el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, `Linked Verification Checks (${req.checks.length}):`));
           const chkTableWrap = el('div', { className: 'data-table-wrap' });

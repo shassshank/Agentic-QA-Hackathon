@@ -120,7 +120,13 @@ def cost_section(run_dir: Path, verdicts: dict) -> dict:
 
 def build(run_dir: Path, catalogue: RequirementCatalogue, *, screenshots: bool = True) -> dict:
     verdicts = json.loads((run_dir / 'verdicts.json').read_text())
-    checks = json.loads((run_dir / 'checks.json').read_text()).get('checks', [])
+    # Judged checks carry the wording decision (reason, probability); fall back to the oracle output.
+    judged = run_dir / 'checks.judged.json'
+    checks = json.loads((judged if judged.exists() else run_dir / 'checks.json').read_text()).get('checks', [])
+    try:
+        link_by_id = {l['requirement_id']: l for l in json.loads((run_dir / 'links.json').read_text()).get('links', [])}
+    except (OSError, ValueError):
+        link_by_id = {}
     observations = json.loads((run_dir / 'observations.json').read_text())
     base_url = observations.get('base_url', '')
     by_check = {(c['probe_id'], c['id']): c for c in checks}
@@ -140,8 +146,12 @@ def build(run_dir: Path, catalogue: RequirementCatalogue, *, screenshots: bool =
         failure = None
         if v.get('failure'):
             f = v['failure']
+            # Same evidence file as the scenario steps; the structured form translates reliably, while the flattened
+            # strings cannot be split when a locator pattern contains spaces ('(transaction )?type').
+            structured = probes.get(f.get('probe_id'), {}).get('steps')
             failure = dict(probe_id=f.get('probe_id'), check_id=f.get('check_id'),
-                           steps=[describe_recorded(s) for s in f.get('steps', [])],
+                           steps=[s['text'] for s in structured] if structured else
+                           [describe_recorded(s) for s in f.get('steps', [])],
                            checks=[dict(check_id=c.get('check_id'), probe_id=c.get('probe_id'), expected=c.get('expected'),
                                         observed=_short(c.get('observed'), 600)) for c in (f.get('checks') or [f])[:12]])
         rows.append(dict(
@@ -152,6 +162,8 @@ def build(run_dir: Path, catalogue: RequirementCatalogue, *, screenshots: bool =
             testability=str(getattr(req.testability, 'value', req.testability)) if req else None,
             assertions=[a.description for a in req.assertions] if req else [],
             review=v.get('review'), checks=linked, failure=failure,
+            link=dict(rationale=link_by_id[v['requirement_id']].get('rationale'),
+                      assertions=link_by_id[v['requirement_id']].get('assertions')) if v['requirement_id'] in link_by_id else None,
             probes=sorted({c['probe_id'] for c in linked if c.get('probe_id')})))
     by_area: dict[str, Counter] = defaultdict(Counter)
     for r in rows:

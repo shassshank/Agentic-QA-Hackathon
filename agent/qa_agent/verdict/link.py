@@ -117,6 +117,10 @@ def link_requirements(catalogue, checks, client, *, cache_dir: Path) -> LinkResu
 
 STAGE1_CANDIDATES = 3   # families per assertion passed from the ranking choice to per-group verification
 GROUP_ACCEPT = .80      # P(group tests the assertion) needed to link it
+RELATED_ACCEPT = .50    # once one family is linked, related candidates this likely are linked too: more linked
+                        # checks can only make a pass harder (the duplicate-submit mutant passed GEN-007 because
+                        # only the loading-state family, 0.91, was linked and duplicate-submit scored 0.58)
+GAP_PARTIAL = .90       # P(some part of the assertion is verified by none of the checks) that caps coverage
 NONE_ACCEPT = .60       # ranking-choice P(none) that leaves an assertion unmapped instead of uncertain
 
 
@@ -143,6 +147,16 @@ GROUP_QUESTION = dict(type='noul', instructions=(
     'behaviour (for example a filter test for a statement about which data exists) do not count.'),
     criteria={'true': 'At least one listed check verifies the behaviour the assertion states.',
               'false': 'No listed check verifies the stated behaviour; they test something else.'})
+# Relevance ("at least one check") does not mean the assertion is fully covered. Jev's completeness judgments were
+# noisy in trials except at the extreme, so only a confident gap downgrades coverage to partial.
+GAP_QUESTION = dict(type='noul', instructions=(
+    '`item.assertion` is a requirement statement. `item.family.checks` lists automated checks (each '
+    "'suffix: what it verifies'), produced by the scenarios in `item.family.scenarios`. Name to yourself each "
+    'distinct behaviour the assertion requires. Is there at least one required behaviour that NONE of the listed '
+    'checks verifies? Checks that verify extra, unrelated things do not matter.'),
+    criteria={'true': 'Some behaviour the assertion requires is not verified by any listed check.',
+              'false': 'Every behaviour the assertion requires is verified by at least one listed check '
+                       '(extra checks are fine).'})
 
 
 def _family_of(tag: str, groups: dict[str, dict]) -> str:
@@ -204,7 +218,8 @@ def link_requirements_jev(catalogue, checks, decider, client, *, cache_dir, scen
                 plan[i] = [(len(verify_requests) + n, tag) for n, tag in enumerate(tags)]
                 verify_requests.extend(({'item': dict(requirement=req.statement, assertion=assertion.description,
                                                       family=dict(name=tag, scenarios=titles[_family_of(tag, groups)],
-                                                                  checks=members[tag]))}, {'tests': GROUP_QUESTION})
+                                                                  checks=members[tag]))},
+                                        {'tests': GROUP_QUESTION, 'gap': GAP_QUESTION})
                                        for tag in tags)
         plans.append(plan)
     verified = ask_many(decider, verify_requests, phase='link', cache_dir=cache_dir) if verify_requests else []
@@ -214,18 +229,22 @@ def link_requirements_jev(catalogue, checks, decider, client, *, cache_dir, scen
         if isinstance(answer, DecisionUnavailable) or failed:
             warnings.append(f'{req.id}: Jev link unavailable: {answer if isinstance(answer, Exception) else failed[0]}')
             unsure = True
-        else:
+        partial = False
+        if not (isinstance(answer, DecisionUnavailable) or failed):
             succeeded = True
             for i in range(len(req.assertions)):
                 p_none = answer[f'a{i}']['probabilities'].get('none', 0)
-                scored = [(tag, verified[n]['tests']['noul']) for n, tag in plan.get(i, [])]
-                selected = [tag for tag, p in scored if p >= GROUP_ACCEPT]
-                if not selected and p_none < NONE_ACCEPT:
+                scored = [(tag, verified[n]['tests']['noul'], verified[n]['gap']['noul']) for n, tag in plan.get(i, [])]
+                primary = [(tag, gap) for tag, p, gap in scored if p >= GROUP_ACCEPT]
+                related = [tag for tag, p, _ in scored if RELATED_ACCEPT <= p < GROUP_ACCEPT] if primary else []
+                if not primary and p_none < NONE_ACCEPT:
                     unsure = True
-                assertions.append(AssertionLink(index=i, families=selected))
+                # Partial when every linked family confidently leaves part of the assertion unverified.
+                partial |= bool(primary) and all(gap >= GAP_PARTIAL for _, gap in primary)
+                assertions.append(AssertionLink(index=i, families=[t for t, _ in primary] + related))
                 best = sorted(scored, key=lambda s: -s[1])[:3]
-                rationale.append(f"a{i}: none={p_none:.2f} " + ', '.join(f'{t}={p:.2f}' for t, p in best))
-        links.append(Link(requirement_id=req.id, assertions=assertions, coverage='full',
+                rationale.append(f"a{i}: none={p_none:.2f} " + ', '.join(f'{t}={p:.2f} (gap {g:.2f})' for t, p, g in best))
+        links.append(Link(requirement_id=req.id, assertions=assertions, coverage='partial' if partial else 'full',
                           rationale='jev ' + '; '.join(rationale)))
         if unsure:
             uncertain.append(req)
