@@ -1,6 +1,6 @@
 # DemoBank QA audit
 
-Target `http://localhost:5173` · run `867ec2` · generated 2026-10-21T18:46:39+00:00
+Target `http://localhost:5173` · run `867ec2` · generated 2026-10-21T21:32:36+00:00
 
 **47 passed · 4 failed · 3 unverified** of 54 requirements (41/41 scenarios completed).
 

@@ -3,174 +3,874 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QA Audit Report</title>
+  <title>DemoBank QA Audit Report</title>
   <style>
     :root {
-      --bg: #f8fafc; --bg-card: #ffffff; --bg-subtle: #f1f5f9; --bg-hover: #e2e8f0;
-      --border: #cbd5e1; --border-subtle: #e2e8f0; --text: #0f172a; --text-muted: #475569; --text-dim: #64748b;
-      --primary: #2563eb; --primary-hover: #1d4ed8; --primary-subtle: #eff6ff;
-      --pass-bg: #ecfdf5; --pass-border: #a7f3d0; --pass-text: #065f46; --pass-solid: #059669;
-      --fail-bg: #fff1f2; --fail-border: #fecdd3; --fail-text: #9f1239; --fail-solid: #e11d48;
-      --unverified-bg: #f8fafc; --unverified-border: #cbd5e1; --unverified-text: #334155; --unverified-solid: #64748b;
-      --badge-bg: #f1f5f9; --badge-border: #cbd5e1; --badge-text: #334155;
-      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07);
-      --radius: 8px;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --bg-hover: #e2e8f0;
+      --border-subtle: #f1f5f9;
+      --border-default: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #64748b;
+      --text-inverse: #ffffff;
+
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-subtle: #eff6ff;
+      --primary-border: #bfdbfe;
+
+      --pass-bg: #ecfdf5;
+      --pass-border: #a7f3d0;
+      --pass-text: #065f46;
+      --pass-solid: #059669;
+
+      --fail-bg: #fef2f2;
+      --fail-border: #fecaca;
+      --fail-text: #991b1b;
+      --fail-solid: #dc2626;
+
+      --unverified-bg: #fffbeb;
+      --unverified-border: #fde68a;
+      --unverified-text: #92400e;
+      --unverified-solid: #d97706;
+
+      --badge-bg: #f1f5f9;
+      --badge-border: #e2e8f0;
+      --badge-text: #334155;
+
+      --radius-xs: 4px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #090d16; --bg-card: #111827; --bg-subtle: #1e293b; --bg-hover: #334155;
-        --border: #334155; --border-subtle: #1f293d; --text: #f1f5f9; --text-muted: #94a3b8; --text-dim: #64748b;
-        --primary: #3b82f6; --primary-hover: #60a5fa; --primary-subtle: #172554;
-        --pass-bg: rgba(6,78,59,0.25); --pass-border: #047857; --pass-text: #6ee7b7; --pass-solid: #10b981;
-        --fail-bg: rgba(136,19,55,0.25); --fail-border: #be123c; --fail-text: #fda4af; --fail-solid: #f43f5e;
-        --unverified-bg: #1e293b; --unverified-border: #475569; --unverified-text: #cbd5e1; --unverified-solid: #94a3b8;
-        --badge-bg: #1e293b; --badge-border: #334155; --badge-text: #cbd5e1;
-        --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
-      }
-    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-sans); background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 1.5rem; max-width: 1320px; margin: 0 auto; }
-    a { color: var(--primary); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 1.5rem 1rem;
+      max-width: 1360px;
+      margin: 0 auto;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; color: var(--primary-hover); }
     button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
     :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); }
-    .section-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; }
-    .section-header h2 { font-size: 1.35rem; font-weight: 700; }
-    .section-desc { color: var(--text-muted); font-size: 0.9rem; }
+    .mono { font-family: var(--font-mono); font-size: 0.85rem; }
 
-    .report-header { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
-    .header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
-    .report-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
-    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
+    /* Cards & Layout */
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.85rem;
+    }
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-desc { color: var(--text-muted); font-size: 0.875rem; }
+
+    /* Report Header */
+    .report-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .report-title-wrap { display: flex; flex-direction: column; gap: 0.35rem; }
+    .report-title-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .report-title {
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--text-main);
+    }
+    .report-tagline { font-size: 0.9rem; color: var(--text-muted); font-weight: 400; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 1.25rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid var(--border-default);
+    }
     .meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
-    .meta-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 600; }
-    .meta-val { font-size: 0.95rem; font-weight: 500; overflow-wrap: anywhere; }
-    .mono { font-family: var(--font-mono); font-size: 0.88rem; }
+    .meta-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+    .meta-val { font-size: 0.9rem; font-weight: 600; overflow-wrap: anywhere; }
 
-    .badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; border: 1px solid transparent; line-height: 1.2; white-space: nowrap; }
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-xs);
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .badge-lg { font-size: 0.85rem; padding: 0.3rem 0.75rem; border-radius: var(--radius-sm); }
     .badge-pass { background: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
     .badge-fail { background: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-text); }
     .badge-unverified { background: var(--unverified-bg); border-color: var(--unverified-border); color: var(--unverified-text); }
-    .badge-unknown { background: var(--bg-subtle); border-color: var(--border); color: var(--text-dim); }
-    .badge-area { background: var(--bg-subtle); border-color: var(--border); color: var(--text); font-family: var(--font-mono); }
-    .badge-bullet { background: var(--primary-subtle); border-color: var(--primary); color: var(--primary); font-family: var(--font-mono); }
+    .badge-unknown { background: var(--bg-subtle); border-color: var(--border-default); color: var(--text-dim); }
+    .badge-area { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--text-main); font-family: var(--font-mono); font-weight: 600; }
+    .badge-bullet { background: var(--primary-subtle); border-color: var(--primary-border); color: var(--primary); font-family: var(--font-mono); }
     .badge-cov-full { background: var(--pass-bg); border-color: var(--pass-border); color: var(--pass-text); }
     .badge-cov-part { background: #fef3c7; border-color: #fde68a; color: #92400e; }
-    .badge-cov-none { background: var(--bg-subtle); border-color: var(--border); color: var(--text-dim); }
-    .badge-kind { font-size: 0.72rem; text-transform: uppercase; background: var(--bg-subtle); border-color: var(--border); }
-    .badge-kind-negative { border-color: #fca5a5; color: #b91c1c; }
-    .badge-kind-edge { border-color: #c4b5fd; color: #6d28d9; }
+    .badge-cov-none { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--text-dim); }
+    .badge-kind { font-size: 0.7rem; text-transform: uppercase; background: var(--bg-subtle); border-color: var(--border-default); color: var(--text-muted); }
+    .badge-kind-negative { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .badge-kind-edge { background: #faf5ff; border-color: #e9d5ff; color: #7e22ce; }
 
-    .tiles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; box-shadow: var(--shadow-sm); }
-    .tile-num { font-size: 2.25rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
-    .tile-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+    /* Overview Stat Tiles */
+    .tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .tile {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .tile:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .tile-num-row { display: flex; align-items: baseline; justify-content: space-between; }
+    .tile-num {
+      font-size: 2.25rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .tile-pct { font-size: 0.85rem; font-weight: 700; color: var(--text-dim); }
+    .tile-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
     .tile-pass { border-top: 4px solid var(--pass-solid); } .tile-pass .tile-num { color: var(--pass-solid); }
-    .tile-fail { border-top: 4px solid var(--fail-solid); } .tile-fail .tile-num { color: var(--fail-solid); }
+    .tile-fail { border-top: 4px solid var(--fail-solid); background: #fffcfc; } .tile-fail .tile-num { color: var(--fail-solid); }
     .tile-unverified { border-top: 4px solid var(--unverified-solid); } .tile-unverified .tile-num { color: var(--unverified-solid); }
-    .tile-total { border-top: 4px solid var(--primary); }
+    .tile-total { border-top: 4px solid var(--primary); } .tile-total .tile-num { color: var(--primary); }
 
-    .bar-stack { height: 10px; width: 100%; background: var(--bg-subtle); border-radius: 9999px; overflow: hidden; display: flex; margin: 0.5rem 0; }
-    .bar-segment { height: 100%; }
+    /* Proportional Bar */
+    .bar-stack {
+      height: 12px;
+      width: 100%;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      display: flex;
+      margin: 0.75rem 0 0.5rem 0;
+      border: 1px solid var(--border-default);
+    }
+    .bar-segment { height: 100%; transition: width 0.3s ease; }
     .bar-seg-pass { background: var(--pass-solid); }
     .bar-seg-fail { background: var(--fail-solid); }
     .bar-seg-unverified { background: var(--unverified-solid); }
 
-    .summary-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
-    @media (max-width: 860px) { .summary-details-grid { grid-template-columns: 1fr; } }
-    .area-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    .area-table th, .area-table td { padding: 0.45rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border-subtle); }
-    .area-table th { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
-    .area-bar-col { width: 120px; }
-    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; }
-    .reason-item { display: flex; gap: 0.5rem; align-items: flex-start; }
-    .reason-count { font-weight: 700; color: var(--text); min-width: 2.2rem; }
-    .reason-text { color: var(--text-muted); }
-    .how-to-read { background: var(--bg-subtle); border-left: 4px solid var(--primary); padding: 0.85rem 1.15rem; border-radius: 0 var(--radius) var(--radius) 0; font-size: 0.88rem; color: var(--text-muted); }
-    .how-to-read strong { color: var(--text); }
+    .bar-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 500; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
-    .failure-card { background: var(--bg-card); border: 1px solid var(--fail-border); border-left: 5px solid var(--fail-solid); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
-    .failure-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
-    .failure-title-wrap { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-    .failure-id { font-family: var(--font-mono); font-weight: 700; font-size: 1.15rem; color: var(--fail-text); }
-    .failure-title { font-size: 1.15rem; font-weight: 700; }
-    .review-pill { background: var(--fail-bg); border: 1px solid var(--fail-border); color: var(--fail-text); padding: 0.3rem 0.65rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; font-family: var(--font-mono); }
-    blockquote.prd-quote { background: var(--bg-subtle); border-left: 3px solid var(--border); padding: 0.65rem 1rem; margin: 0.75rem 0 1rem 0; font-style: italic; color: var(--text-muted); border-radius: 0 4px 4px 0; font-size: 0.92rem; }
-    .quote-footer { margin-top: 0.35rem; display: flex; gap: 0.35rem; font-style: normal; }
-    .repro-steps { margin: 0.75rem 0 1rem 1.25rem; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+    /* Telemetry KPI Pills */
+    .telemetry-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding: 0.85rem 1rem;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-default);
+    }
+    .telemetry-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .telemetry-label { font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-dim); }
+    .telemetry-val { font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
 
-    .data-table-wrap { overflow-x: auto; margin: 0.75rem 0; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
-    .data-table th, .data-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
-    .data-table th { background: var(--bg-subtle); color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
-    .data-table tbody tr:hover { background: var(--bg-subtle); }
-    .obs-code { font-family: var(--font-mono); font-size: 0.8rem; background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.4rem 0.6rem; max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+    /* Area & Unverified Grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } }
 
-    .shots-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin: 1rem 0; }
-    .shot-thumb-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; }
-    .shot-thumb-card:hover { transform: translateY(-2px); border-color: var(--primary); }
-    .shot-thumb-img { width: 100%; height: 160px; object-fit: cover; display: block; background: #000; }
-    .shot-thumb-caption { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+    .area-table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .area-table-header {
+      padding: 0.75rem 1rem;
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-default);
+      font-weight: 700;
+      font-size: 0.88rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .area-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    .area-table th, .area-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+    .area-table th { color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase; font-weight: 700; background: #fff; }
+    .area-row-interactive { cursor: pointer; transition: background 0.15s ease; }
+    .area-row-interactive:hover { background: var(--primary-subtle); }
+    .area-bar-col { width: 110px; }
 
-    details.sub-details { margin: 0.75rem 0; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-subtle); }
-    details.sub-details > summary { padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); user-select: none; }
-    details.sub-details > summary:hover { color: var(--text); }
-    details.sub-details[open] > summary { border-bottom: 1px solid var(--border-subtle); }
-    details.sub-details .sub-content { padding: 0.75rem; overflow-x: auto; }
+    .reasons-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+    }
+    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.88rem; }
+    .reason-item { display: flex; gap: 0.5rem; align-items: baseline; }
+    .reason-count { font-weight: 800; color: var(--unverified-text); background: var(--unverified-bg); border: 1px solid var(--unverified-border); padding: 0.1rem 0.45rem; border-radius: var(--radius-xs); font-size: 0.78rem; font-family: var(--font-mono); }
+    .reason-text { color: var(--text-muted); font-size: 0.86rem; }
 
-    .filters-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-subtle); border-radius: var(--radius); border: 1px solid var(--border-subtle); }
-    .search-box { flex: 1; min-width: 200px; padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-card); color: var(--text); font-size: 0.88rem; }
+    .how-to-read {
+      background: var(--primary-subtle);
+      border: 1px solid var(--primary-border);
+      border-left: 4px solid var(--primary);
+      padding: 0.85rem 1.15rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      margin-top: 1rem;
+    }
+
+    /* Defects Found Quick-Drill Bar */
+    .defects-card {
+      background: #fff;
+      border: 1px solid var(--fail-border);
+      border-left: 5px solid var(--fail-solid);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .defects-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+    .defects-title { font-size: 1.05rem; font-weight: 800; color: var(--fail-text); display: flex; align-items: center; gap: 0.5rem; }
+    .defects-desc { font-size: 0.85rem; color: var(--text-muted); }
+    .defects-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .defect-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      background: var(--fail-bg);
+      border: 1px solid var(--fail-border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+    .defect-item:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      transform: translateX(3px);
+    }
+    .defect-meta { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; min-width: 220px; }
+    .defect-id { font-weight: 800; color: var(--fail-text); font-size: 0.88rem; }
+    .defect-title { font-weight: 600; font-size: 0.88rem; color: var(--text-main); }
+    .defect-obs {
+      flex: 1;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 450px;
+    }
+    .defect-action {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--fail-solid);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .no-defects-banner {
+      background: var(--pass-bg);
+      border: 1px solid var(--pass-border);
+      border-left: 5px solid var(--pass-solid);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.92rem;
+      color: var(--pass-text);
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Filters Toolbar */
+    .filters-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding: 0.85rem;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-default);
+    }
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+      padding: 0.5rem 0.85rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.88rem;
+    }
+    .search-box:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
     .filter-group { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
-    .filter-chip { padding: 0.35rem 0.75rem; border-radius: 9999px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-    .filter-chip:hover { border-color: var(--primary); color: var(--text); }
+    .filter-chip {
+      padding: 0.4rem 0.8rem;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .filter-chip:hover { border-color: var(--primary); color: var(--text-main); }
     .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .filter-select { padding: 0.4rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.85rem; }
-    .filter-count { font-size: 0.82rem; color: var(--text-dim); margin-left: auto; }
+    .filter-chip.active-fail { background: var(--fail-solid); border-color: var(--fail-solid); color: #fff; }
+    .filter-select {
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+    .filter-count { font-size: 0.82rem; color: var(--text-dim); font-weight: 600; margin-left: auto; }
 
-    .req-row-main { cursor: pointer; }
-    .req-row-detail { background: var(--bg-subtle); }
-    .req-detail-container { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; border-left: 3px solid var(--primary); }
-    .req-expand-btn { background: none; border: none; cursor: pointer; font-weight: bold; color: var(--text-dim); padding: 0.2rem 0.4rem; border-radius: 4px; }
-    .req-expand-btn:hover { background: var(--bg-hover); color: var(--text); }
+    /* Requirements Cards (<details>/<summary>) */
+    .req-list { display: flex; flex-direction: column; gap: 0.65rem; }
+    .req-card {
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      overflow: hidden;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .req-card:hover { border-color: var(--border-strong); }
+    .req-card[open] {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-sm);
+    }
+    .req-card-fail { border-left: 4px solid var(--fail-solid); }
+    .req-card-unverified { border-left: 4px solid var(--unverified-solid); }
+    .req-card-pass { border-left: 4px solid var(--pass-solid); }
 
-    .probe-card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.85rem; background: var(--bg-card); overflow: hidden; }
-    .probe-card > summary { padding: 0.85rem 1.15rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; background: var(--bg-card); user-select: none; }
-    .probe-card > summary:hover { background: var(--bg-subtle); }
-    .probe-card[open] > summary { border-bottom: 1px solid var(--border-subtle); background: var(--bg-subtle); }
-    .probe-summary-left { display: flex; align-items: baseline; gap: 0.65rem; flex-wrap: wrap; }
+    .req-summary {
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      user-select: none;
+      background: var(--bg-card);
+      list-style: none;
+    }
+    .req-summary::-webkit-details-marker { display: none; }
+    .req-summary:hover { background: var(--bg-subtle); }
+    .req-card[open] > .req-summary {
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+    }
+
+    .req-summary-left {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+    .chevron-icon {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-block;
+      width: 1rem;
+      text-align: center;
+    }
+    .req-card[open] > .req-summary .chevron-icon {
+      transform: rotate(90deg);
+    }
+    .req-id { font-weight: 800; font-size: 0.9rem; color: var(--text-main); }
+    .req-title { font-weight: 600; font-size: 0.92rem; color: var(--text-main); }
+    .req-summary-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .req-reason-pill { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; }
+
+    /* Requirement Body */
+    .req-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      background: var(--bg-card);
+    }
+
+    .detail-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .detail-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+    blockquote.prd-quote {
+      background: var(--bg-subtle);
+      border-left: 3px solid var(--border-strong);
+      padding: 0.75rem 1.15rem;
+      font-style: italic;
+      color: var(--text-muted);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+    .quote-footer { margin-top: 0.45rem; display: flex; gap: 0.35rem; font-style: normal; }
+    .assertions-list { margin-left: 1.25rem; font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.35rem; color: var(--text-main); }
+
+    /* Review Card */
+    .review-banner {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      font-size: 0.86rem;
+    }
+    .review-top { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .review-probs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; font-size: 0.78rem; }
+    .prob-pill { background: var(--bg-card); border: 1px solid var(--border-default); padding: 0.15rem 0.5rem; border-radius: var(--radius-xs); }
+
+    /* Data Tables */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      margin: 0.35rem 0;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .data-table th, .data-table td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+    }
+    .data-table th {
+      background: var(--bg-subtle);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .data-table tbody tr:hover { background: var(--bg-subtle); }
+    .obs-code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xs);
+      padding: 0.45rem 0.65rem;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      color: var(--text-main);
+    }
+
+    /* Failure Details Deep-Dive */
+    .failure-box {
+      background: #fffcfc;
+      border: 1px solid var(--fail-border);
+      border-left: 4px solid var(--fail-solid);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .failure-box-title { font-size: 0.95rem; font-weight: 700; color: var(--fail-text); }
+    .repro-steps {
+      margin-left: 1.25rem;
+      font-size: 0.88rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      color: var(--text-main);
+    }
+
+    /* Screenshots Gallery */
+    .shots-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.85rem;
+      margin: 0.5rem 0;
+    }
+    .shot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .shot-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+    }
+    .shot-thumb {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      display: block;
+      background: #0f172a;
+    }
+    .shot-caption {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Nested Details */
+    details.sub-details {
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-subtle);
+      margin: 0.5rem 0;
+    }
+    details.sub-details > summary {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      user-select: none;
+      list-style: none;
+    }
+    details.sub-details > summary::-webkit-details-marker { display: none; }
+    details.sub-details > summary:hover { color: var(--text-main); }
+    details.sub-details[open] > summary {
+      border-bottom: 1px solid var(--border-default);
+      color: var(--text-main);
+    }
+    details.sub-details .sub-content { padding: 0.75rem; }
+
+    /* Probe Cards */
+    .probe-card {
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      overflow: hidden;
+      margin-bottom: 0.65rem;
+      transition: border-color 0.15s ease;
+    }
+    .probe-card:hover { border-color: var(--border-strong); }
+    .probe-card[open] { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+    .probe-summary {
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      user-select: none;
+      list-style: none;
+      background: var(--bg-card);
+    }
+    .probe-summary::-webkit-details-marker { display: none; }
+    .probe-summary:hover { background: var(--bg-subtle); }
+    .probe-card[open] > .probe-summary {
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+    }
+    .probe-summary-left { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
     .probe-summary-right { display: flex; align-items: center; gap: 0.5rem; }
-    .probe-body { padding: 1.25rem; }
-    .step-item { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; padding: 0.2rem 0; }
-    .step-item.step-failed { color: var(--fail-solid); font-weight: 600; }
-    .step-num { color: var(--text-dim); min-width: 1.8rem; font-family: var(--font-mono); font-size: 0.82rem; }
+    .probe-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
 
-    @keyframes pulseHighlight { 0% { box-shadow: 0 0 0 4px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
-    .highlight-pulse { animation: pulseHighlight 2s ease-out; }
+    .step-item {
+      display: flex;
+      gap: 0.6rem;
+      align-items: baseline;
+      font-size: 0.88rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-item.step-failed { color: var(--fail-solid); font-weight: 600; background: #fff5f5; padding: 0.35rem 0.5rem; border-radius: var(--radius-xs); }
+    .step-num { color: var(--text-dim); min-width: 1.8rem; font-family: var(--font-mono); font-size: 0.8rem; }
 
-    .lightbox-dialog { border: 1px solid var(--border); border-radius: var(--radius); padding: 0; background: var(--bg-card); color: var(--text); max-width: 90vw; max-height: 90vh; margin: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
-    .lightbox-dialog::backdrop { background: rgba(0,0,0,0.75); backdrop-filter: blur(2px); }
-    .lightbox-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border-subtle); }
-    .lightbox-title { font-weight: 600; font-size: 0.95rem; }
-    .lightbox-close-btn { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.85rem; }
+    /* Cost Table */
+    .cost-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .cost-summary {
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      list-style: none;
+      background: var(--bg-card);
+      user-select: none;
+    }
+    .cost-summary::-webkit-details-marker { display: none; }
+    .cost-summary:hover { background: var(--bg-subtle); }
+    .cost-card[open] > .cost-summary {
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-subtle);
+    }
+    .cost-body { padding: 1.25rem; }
+
+    /* Warnings */
+    .warning-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+      padding: 0.85rem 1.15rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+    }
+
+    /* Pulse Highlight */
+    @keyframes highlightPulse {
+      0% { box-shadow: 0 0 0 4px var(--primary); }
+      50% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.4); }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    .highlight-pulse { animation: highlightPulse 2s ease-out; }
+
+    /* Lightbox Modal */
+    .lightbox-dialog {
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      padding: 0;
+      background: var(--bg-card);
+      color: var(--text-main);
+      max-width: 92vw;
+      max-height: 90vh;
+      margin: auto;
+      box-shadow: var(--shadow-lg);
+    }
+    .lightbox-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(3px);
+    }
+    .lightbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border-default);
+      background: var(--bg-card);
+    }
+    .lightbox-title { font-weight: 700; font-size: 0.92rem; color: var(--text-main); }
+    .lightbox-close-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xs);
+      padding: 0.3rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
     .lightbox-close-btn:hover { background: var(--bg-hover); }
-    .lightbox-body { padding: 1rem; display: flex; justify-content: center; align-items: center; max-height: calc(90vh - 70px); overflow: auto; }
-    .lightbox-img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 4px; }
+    .lightbox-body {
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      max-height: calc(90vh - 65px);
+      overflow: auto;
+      background: #0b0f19;
+    }
+    .lightbox-img {
+      max-width: 100%;
+      max-height: 75vh;
+      object-fit: contain;
+      border-radius: var(--radius-xs);
+    }
 
-    .warning-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem; font-size: 0.9rem; }
-    @media (prefers-color-scheme: dark) { .warning-box { background: rgba(245,158,11,0.15); border-color: #b45309; color: #fde68a; } }
-
+    /* Print Styles */
     @media print {
       body { background: #fff !important; color: #000 !important; padding: 0 !important; font-size: 10pt; }
-      .filters-toolbar, .lightbox-dialog, .req-expand-btn, button { display: none !important; }
-      .section-card, .failure-card, .probe-card, .tile { box-shadow: none !important; border: 1px solid #ddd !important; page-break-inside: avoid; break-inside: avoid; }
+      .filters-toolbar, .lightbox-dialog, .btn-secondary, button { display: none !important; }
+      .section-card, .req-card, .probe-card, .tile, .defects-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
       details { display: block !important; }
       details > :not(summary) { display: block !important; }
       details > summary { cursor: default; }
-      .req-row-detail { display: table-row !important; }
+      details > summary::-webkit-details-marker { display: none; }
+      .chevron-icon { display: none !important; }
+    }
+
+    /* Mobile 390px */
+    @media (max-width: 600px) {
+      body { padding: 0.75rem 0.5rem; }
+      .section-card, .report-header { padding: 1rem; }
+      .report-title { font-size: 1.35rem; }
+      .tiles-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .tile { padding: 0.85rem; }
+      .tile-num { font-size: 1.75rem; }
+      .filters-toolbar { flex-direction: column; align-items: stretch; }
+      .filter-count { margin-left: 0; }
+      .defect-item { flex-direction: column; align-items: flex-start; }
+      .defect-obs { max-width: 100%; }
+      .req-summary { flex-direction: column; align-items: flex-start; }
+      .req-summary-right { width: 100%; justify-content: space-between; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
 </head>
@@ -190,23 +890,45 @@
   <script>
     (function() {
       'use strict';
+
+      // URLs from report data are limited to http(s) links, in-page anchors and embedded images, so a crafted
+      // value (e.g. a javascript: URL) can never execute. The image prefix is assembled to keep the template
+      // free of the literal that marks an embedded screenshot.
+      const IMAGE_PREFIX = 'data' + ':image/';
+      function safeUrl(attr, value) {
+        const v = String(value).trim();
+        if (attr === 'src') return v.startsWith(IMAGE_PREFIX) ? v : null;
+        return /^(https?:\/\/|#)/i.test(v) ? v : null;
+      }
+
       function el(tag, props, ...children) {
         const node = document.createElement(tag);
         if (props) {
           for (const [k, v] of Object.entries(props)) {
             if (v == null || v === false) continue;
-            if (k === 'className') node.className = v;
+            if (k === 'href' || k === 'src') {
+              const url = safeUrl(k, v);
+              if (url) node.setAttribute(k, url);
+            } else if (k === 'className') node.className = v;
             else if (k === 'textContent') node.textContent = v;
-            else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
-            else if (k === 'dataset' && typeof v === 'object') {
-              for (const [dk, dv] of Object.entries(v)) node.dataset[dk] = dv;
-            } else node.setAttribute(k, v);
+            else if (k.startsWith('on') && typeof v === 'function') {
+              node.addEventListener(k.slice(2).toLowerCase(), v);
+            } else if (k === 'dataset' && typeof v === 'object') {
+              for (const [dk, dv] of Object.entries(v)) {
+                if (dv != null) node.dataset[dk] = dv;
+              }
+            } else {
+              node.setAttribute(k, v);
+            }
           }
         }
         for (const c of children.flat(Infinity)) {
           if (c == null || c === false) continue;
-          if (typeof c === 'string' || typeof c === 'number') node.appendChild(document.createTextNode(String(c)));
-          else if (c instanceof Node) node.appendChild(c);
+          if (typeof c === 'string' || typeof c === 'number') {
+            node.appendChild(document.createTextNode(String(c)));
+          } else if (c instanceof Node) {
+            node.appendChild(c);
+          }
         }
         return node;
       }
@@ -218,7 +940,12 @@
           return isNaN(d) ? iso : d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
         } catch { return iso; }
       }
-      function formatUsd(val) { return val == null ? 'unpriced' : '$' + Number(val).toFixed(6); }
+      // Cents-level precision for headline totals, more digits only for sub-cent phase costs.
+      function formatUsd(val) {
+        if (val == null) return 'unpriced';
+        const n = Number(val);
+        return '$' + (n === 0 ? '0' : n < 0.01 ? n.toFixed(4) : n.toFixed(3));
+      }
       function formatNum(n) { return n != null ? Number(n).toLocaleString() : '0'; }
 
       function statusBadge(status) {
@@ -235,25 +962,63 @@
         return el('span', { className: `badge ${cls}` }, c === 'full' ? 'Full Coverage' : (c === 'partial' ? 'Partial' : 'No Coverage'));
       }
 
-      function kindBadge(kind) { return el('span', { className: `badge badge-kind badge-kind-${kind || 'normal'}` }, kind || 'normal'); }
+      function kindBadge(kind) {
+        return el('span', { className: `badge badge-kind badge-kind-${kind || 'normal'}` }, kind || 'normal');
+      }
 
+      const AREA_MAP = {
+        SES: 'Session',
+        ACC: 'Accounts',
+        TRF: 'Transfers',
+        HIS: 'History',
+        PRO: 'Profile',
+        GEN: 'General',
+        SEED: 'Seed data'
+      };
+      function getAreaName(code) { return AREA_MAP[code] || code || 'GEN'; }
+
+      // One readable line per defect: how many confirmed checks failed, where, and what was expected.
+      // Raw observed values (often JSON) stay in the detail view.
+      function getOneLineObserved(r) {
+        const failing = (r.failure && r.failure.checks && r.failure.checks.length)
+          ? r.failure.checks
+          : (r.checks || []).filter(c => c.status === 'fail');
+        if (!failing.length) return 'Confirmed failure; see details.';
+        const first = failing[0];
+        const probe = first.probe_id || (r.failure && r.failure.probe_id) || '';
+        const count = `${failing.length} check${failing.length === 1 ? '' : 's'} failed${probe ? ' in ' + probe : ''}`;
+        let line = first.expected ? `${count} — expected: ${first.expected}` : count;
+        line = line.replace(/\s+/g, ' ').trim();
+        return line.length > 130 ? line.slice(0, 127) + '…' : line;
+      }
+
+      // Lightbox handling
       const lightbox = document.getElementById('lightbox');
       const lightboxImg = document.getElementById('lightbox-img');
       const lightboxCaption = document.getElementById('lightbox-caption');
       const lightboxClose = document.getElementById('lightbox-close');
 
       function openLightbox(src, caption) {
-        if (typeof src === 'string' && src.startsWith('data:image/')) {
-          lightboxImg.setAttribute('src', src);
+        if (typeof src === 'string' && safeUrl('src', src)) {
+          lightboxImg.setAttribute('src', safeUrl('src', src));
           lightboxImg.setAttribute('alt', caption || 'Screenshot');
-          lightboxCaption.textContent = caption || 'Screenshot';
+          lightboxCaption.textContent = caption || 'Screenshot Preview';
           if (typeof lightbox.showModal === 'function') lightbox.showModal();
           else lightbox.setAttribute('open', 'true');
         }
       }
-      lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
-      lightboxClose.addEventListener('click', () => lightbox.close());
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+          if (typeof lightbox.close === 'function') lightbox.close();
+          else lightbox.removeAttribute('open');
+        }
+      });
+      lightboxClose.addEventListener('click', () => {
+        if (typeof lightbox.close === 'function') lightbox.close();
+        else lightbox.removeAttribute('open');
+      });
 
+      // Parse payload
       let data = {};
       try {
         data = JSON.parse(document.getElementById('report-data').textContent);
@@ -265,113 +1030,42 @@
       const meta = data.meta || {}, summary = data.summary || {}, requirements = data.requirements || [];
       const probes = data.probes || {}, cost = data.cost || {}, reasons = data.reasons || {}, warnings = data.warnings || [];
 
-      // 1. Header
-      const headerEl = document.getElementById('report-header');
-      headerEl.appendChild(el('div', { className: 'header-top' },
-        el('div', null,
-          el('h1', { className: 'report-title' }, meta.title || 'DemoBank QA Audit Report'),
-          el('div', { className: 'meta-val', style: 'color: var(--text-muted); margin-top: 0.25rem;' },
-            'Autonomous QA verification against Product Requirements Document'
-          )
-        )
-      ));
+      // Forward declarations for interactive filters
+      let filterStatus = 'all', filterArea = 'all', searchQuery = '';
+      let applyReqFilters = null;
+      let updateStatusChips = null;
+      let searchInput = null;
+      let areaSelect = null;
 
-      const prdSha = meta.catalogue && meta.catalogue.prd_sha256 ? meta.catalogue.prd_sha256.slice(0, 10) : '—';
-      headerEl.appendChild(el('div', { className: 'meta-grid' },
-        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Target URL'),
-          el('span', { className: 'meta-val mono' }, meta.target_url ? el('a', { href: meta.target_url, target: '_blank', rel: 'noopener' }, meta.target_url) : '—')),
-        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Run Tag'), el('span', { className: 'meta-val mono' }, meta.run_tag || '—')),
-        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'PRD Hash'), el('span', { className: 'meta-val mono', title: meta.catalogue?.prd_sha256 || '' }, prdSha)),
-        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Scenarios Completed'), el('span', { className: 'meta-val' }, `${meta.probes_completed || 0} / ${meta.probes_total || 0} (${meta.probe_runtime_s || 0}s)`)),
-        el('div', { className: 'meta-item' }, el('span', { className: 'meta-label' }, 'Generated At'), el('span', { className: 'meta-val' }, formatTime(meta.generated_at)))
-      ));
-
-      const mainEl = document.getElementById('report-main');
-      if (warnings.length > 0) {
-        mainEl.appendChild(el('div', { className: 'warning-box' },
-          el('strong', null, 'Warnings:'),
-          el('ul', { style: 'margin-left: 1.25rem; margin-top: 0.25rem;' }, warnings.map(w => el('li', null, String(w))))
-        ));
-      }
-
-      // 2. Verdict Summary
-      const summarySec = el('section', { className: 'section-card' },
-        el('div', { className: 'section-header' }, el('h2', null, 'Verdict Summary'), el('span', { className: 'section-desc' }, 'High-level audit verification results & coverage breakdown'))
-      );
-
-      const totalReqs = summary.total || requirements.length || 0;
-      const passedCount = summary.passed || 0, failedCount = summary.failed || 0, unverifiedCount = summary.unverified || 0;
-
-      summarySec.appendChild(el('div', { className: 'tiles-grid' },
-        el('div', { className: 'tile tile-pass' }, el('span', { className: 'tile-num' }, String(passedCount)), el('span', { className: 'tile-label' }, 'Passed Requirements')),
-        el('div', { className: 'tile tile-fail' }, el('span', { className: 'tile-num' }, String(failedCount)), el('span', { className: 'tile-label' }, 'Failed Requirements')),
-        el('div', { className: 'tile tile-unverified' }, el('span', { className: 'tile-num' }, String(unverifiedCount)), el('span', { className: 'tile-label' }, 'Unverified Requirements')),
-        el('div', { className: 'tile tile-total' }, el('span', { className: 'tile-num' }, String(totalReqs)), el('span', { className: 'tile-label' }, 'Total In PRD'))
-      ));
-
-      const cov = summary.coverage || {}, covFull = cov.full || 0, covPart = cov.partial || 0, covNone = cov.none || 0;
-      const covTotal = (covFull + covPart + covNone) || totalReqs || 1;
-      summarySec.appendChild(el('div', { className: 'bar-stack', title: `Passed: ${passedCount}, Failed: ${failedCount}, Unverified: ${unverifiedCount}` },
-        el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${(passedCount / (totalReqs || 1) * 100)}%` }),
-        el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${(failedCount / (totalReqs || 1) * 100)}%` }),
-        el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${(unverifiedCount / (totalReqs || 1) * 100)}%` })
-      ));
-      summarySec.appendChild(el('div', { style: 'display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; font-size: 0.85rem;' },
-        el('span', null, el('strong', null, 'Coverage: '), `${covFull} Full (${((covFull / covTotal) * 100).toFixed(1)}%) · ${covPart} Partial · ${covNone} None`)
-      ));
-
-      const sumDetailsGrid = el('div', { className: 'summary-details-grid' });
-      const areaWrap = el('div', null, el('h3', { style: 'font-size: 1rem; margin-bottom: 0.75rem;' }, 'Breakdown by PRD Area'));
-      const areaTable = el('table', { className: 'area-table' },
-        el('thead', null, el('tr', null, el('th', null, 'Area'), el('th', null, 'Pass'), el('th', null, 'Fail'), el('th', null, 'Unv'), el('th', null, 'Total'), el('th', { className: 'area-bar-col' }, 'Ratio')))
-      );
-      const areaTbody = el('tbody');
-      for (const [areaName, aCounts] of Object.entries(summary.by_area || {})) {
-        const ap = aCounts.passed || 0, af = aCounts.failed || 0, au = aCounts.unverified || 0, at = ap + af + au || 1;
-        areaTbody.appendChild(el('tr', null,
-          el('td', null, el('span', { className: 'badge badge-area' }, areaName)),
-          el('td', { style: 'color: var(--pass-solid); font-weight: 600;' }, String(ap)),
-          el('td', { style: af > 0 ? 'color: var(--fail-solid); font-weight: 600;' : '' }, String(af)),
-          el('td', { style: 'color: var(--text-dim);' }, String(au)),
-          el('td', { style: 'font-weight: 600;' }, String(at)),
-          el('td', { className: 'area-bar-col' },
-            el('div', { className: 'bar-stack', style: 'height: 6px; margin: 0;' },
-              el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${(ap / at * 100)}%` }),
-              el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${(af / at * 100)}%` }),
-              el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${(au / at * 100)}%` })
-            )
-          )
-        ));
-      }
-      areaTable.appendChild(areaTbody);
-      areaWrap.appendChild(areaTable);
-      sumDetailsGrid.appendChild(areaWrap);
-
-      const reasonsWrap = el('div', null, el('h3', { style: 'font-size: 1rem; margin-bottom: 0.75rem;' }, 'Unverified Explanations'));
-      const reasonsUl = el('ul', { className: 'reasons-list' });
-      const summaryReasons = summary.reasons || {};
-      const reasonEntries = Object.entries(summaryReasons);
-      if (reasonEntries.length === 0) reasonsUl.appendChild(el('li', { className: 'reason-item' }, 'All requirements verified.'));
-      else {
-        for (const [code, count] of reasonEntries) {
-          reasonsUl.appendChild(el('li', { className: 'reason-item' },
-            el('span', { className: 'reason-count' }, `${count} ×`),
-            el('span', { className: 'reason-text' }, reasons[code] || code)
-          ));
+      function jumpToReq(reqId) {
+        const reqObj = requirements.find(r => r.id === reqId);
+        if (reqObj && applyReqFilters) {
+          let needsReset = false;
+          if (filterStatus !== 'all' && filterStatus !== reqObj.status) needsReset = true;
+          if (filterArea !== 'all' && filterArea !== reqObj.area) needsReset = true;
+          if (searchQuery) {
+            const txt = [reqObj.id, reqObj.title, reqObj.statement, reqObj.source_quote, reqObj.reason_text].filter(Boolean).join(' ').toLowerCase();
+            if (!txt.includes(searchQuery)) needsReset = true;
+          }
+          if (needsReset) {
+            filterStatus = 'all';
+            filterArea = 'all';
+            searchQuery = '';
+            if (searchInput) searchInput.value = '';
+            if (areaSelect) areaSelect.value = 'all';
+            if (updateStatusChips) updateStatusChips();
+            applyReqFilters();
+          }
+        }
+        const target = document.getElementById('req-' + reqId);
+        if (target) {
+          target.open = true;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.add('highlight-pulse');
+          setTimeout(() => target.classList.remove('highlight-pulse'), 2200);
+          try { history.pushState(null, '', '#' + reqId); } catch {}
         }
       }
-      reasonsWrap.appendChild(reasonsUl);
-      sumDetailsGrid.appendChild(reasonsWrap);
-      summarySec.appendChild(sumDetailsGrid);
-
-      summarySec.appendChild(el('div', { className: 'how-to-read' },
-        el('p', null,
-          el('strong', null, 'How to read this report: '),
-          el('strong', { style: 'color: var(--fail-solid);' }, 'failed'), ' = confirmed on re-run and reviewed as violating the requirement; ',
-          el('strong', { style: 'color: var(--unverified-solid);' }, 'unverified'), ' = not enough evidence, never a guess.'
-        )
-      ));
-      mainEl.appendChild(summarySec);
 
       function jumpToProbe(probeId) {
         const target = document.getElementById('probe-' + probeId);
@@ -379,25 +1073,291 @@
           target.open = true;
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           target.classList.add('highlight-pulse');
-          setTimeout(() => target.classList.remove('highlight-pulse'), 2000);
+          setTimeout(() => target.classList.remove('highlight-pulse'), 2200);
+          try { history.pushState(null, '', '#probe-' + probeId); } catch {}
         }
       }
 
+      // 1. Report Header
+      const headerEl = document.getElementById('report-header');
+      const prdSha = meta.catalogue && meta.catalogue.prd_sha256 ? meta.catalogue.prd_sha256.slice(0, 10) : '—';
+      headerEl.appendChild(el('div', { className: 'header-top' },
+        el('div', { className: 'report-title-wrap' },
+          el('div', { className: 'report-title-row' },
+            el('h1', { className: 'report-title' }, meta.title || 'DemoBank QA Audit Report'),
+            el('span', { className: 'badge badge-area', style: 'font-size: 0.8rem;' }, `Run ${meta.run_tag || 'current'}`)
+          ),
+          el('div', { className: 'report-tagline' }, 'Autonomous PRD Verification & Deep Conformance Audit')
+        )
+      ));
+
+      headerEl.appendChild(el('div', { className: 'meta-grid' },
+        el('div', { className: 'meta-item' },
+          el('span', { className: 'meta-label' }, 'Target Application'),
+          el('span', { className: 'meta-val mono' },
+            meta.target_url ? el('a', { href: meta.target_url, target: '_blank', rel: 'noopener' }, meta.target_url) : '—'
+          )
+        ),
+        el('div', { className: 'meta-item' },
+          el('span', { className: 'meta-label' }, 'Audit Date & Time'),
+          el('span', { className: 'meta-val' }, formatTime(meta.generated_at))
+        ),
+        el('div', { className: 'meta-item' },
+          el('span', { className: 'meta-label' }, 'PRD Hash'),
+          el('span', { className: 'meta-val mono', title: meta.catalogue?.prd_sha256 || '' }, prdSha)
+        ),
+        el('div', { className: 'meta-item' },
+          el('span', { className: 'meta-label' }, 'Scenarios Executed'),
+          el('span', { className: 'meta-val' }, `${meta.probes_completed || 0} / ${meta.probes_total || 0} (${meta.probe_runtime_s || 0}s)`)
+        ),
+        el('div', { className: 'meta-item' },
+          el('span', { className: 'meta-label' }, 'Total Audit Cost'),
+          el('span', { className: 'meta-val', style: 'color: var(--primary); font-weight: 700;' },
+            `${formatUsd(cost.total_usd)} billed · ${formatUsd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd)} cold`
+          )
+        )
+      ));
+
+      const mainEl = document.getElementById('report-main');
+
+      // Warnings
+      if (warnings.length > 0) {
+        mainEl.appendChild(el('div', { className: 'warning-box' },
+          el('strong', null, `⚠️ Audit Warnings (${warnings.length}):`),
+          el('ul', { style: 'margin-left: 1.25rem; margin-top: 0.35rem;' }, warnings.map(w => el('li', null, String(w))))
+        ));
+      }
+
+      // 2. Executive Overview Section (Above the fold)
+      const overviewSec = el('section', { className: 'section-card', id: 'section-overview' },
+        el('div', { className: 'section-header' },
+          el('h2', null, 'Executive Summary & Audit Verdict'),
+          el('span', { className: 'section-desc' }, 'Comprehensive conformance outcome across all PRD specifications')
+        )
+      );
+
+      const totalReqs = summary.total || requirements.length || 0;
+      const passedCount = summary.passed || 0, failedCount = summary.failed || 0, unverifiedCount = summary.unverified || 0;
+      const passPct = totalReqs > 0 ? ((passedCount / totalReqs) * 100).toFixed(1) : '0';
+      const failPct = totalReqs > 0 ? ((failedCount / totalReqs) * 100).toFixed(1) : '0';
+      const unvPct = totalReqs > 0 ? ((unverifiedCount / totalReqs) * 100).toFixed(1) : '0';
+
+      // KPI Tiles
+      overviewSec.appendChild(el('div', { className: 'tiles-grid' },
+        el('div', { className: 'tile tile-pass' },
+          el('div', { className: 'tile-num-row' },
+            el('span', { className: 'tile-num' }, String(passedCount)),
+            el('span', { className: 'tile-pct' }, `${passPct}%`)
+          ),
+          el('span', { className: 'tile-label' }, '✓ Passed Requirements')
+        ),
+        el('div', { className: 'tile tile-fail' },
+          el('div', { className: 'tile-num-row' },
+            el('span', { className: 'tile-num' }, String(failedCount)),
+            el('span', { className: 'tile-pct' }, `${failPct}%`)
+          ),
+          el('span', { className: 'tile-label' }, '✗ Failed Requirements')
+        ),
+        el('div', { className: 'tile tile-unverified' },
+          el('div', { className: 'tile-num-row' },
+            el('span', { className: 'tile-num' }, String(unverifiedCount)),
+            el('span', { className: 'tile-pct' }, `${unvPct}%`)
+          ),
+          el('span', { className: 'tile-label' }, '? Unverified Requirements')
+        ),
+        el('div', { className: 'tile tile-total' },
+          el('div', { className: 'tile-num-row' },
+            el('span', { className: 'tile-num' }, String(totalReqs)),
+            el('span', { className: 'tile-pct' }, '100%')
+          ),
+          el('span', { className: 'tile-label' }, 'Total Audited Scope')
+        )
+      ));
+
+      // Proportional Segmented Bar
+      overviewSec.appendChild(el('div', { className: 'bar-stack', title: `Passed: ${passedCount} (${passPct}%), Failed: ${failedCount} (${failPct}%), Unverified: ${unverifiedCount} (${unvPct}%)` },
+        el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${passPct}%` }),
+        el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${failPct}%` }),
+        el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${unvPct}%` })
+      ));
+      overviewSec.appendChild(el('div', { className: 'bar-legend' },
+        el('div', { className: 'legend-item' },
+          el('span', { className: 'legend-dot', style: 'background: var(--pass-solid);' }),
+          el('span', null, `Passed: ${passedCount} (${passPct}%)`)
+        ),
+        el('div', { className: 'legend-item' },
+          el('span', { className: 'legend-dot', style: 'background: var(--fail-solid);' }),
+          el('span', null, `Failed: ${failedCount} (${failPct}%)`)
+        ),
+        el('div', { className: 'legend-item' },
+          el('span', { className: 'legend-dot', style: 'background: var(--unverified-solid);' }),
+          el('span', null, `Unverified: ${unverifiedCount} (${unvPct}%)`)
+        )
+      ));
+
+      // Telemetry Quick Row
+      const cov = summary.coverage || {}, covFull = cov.full || 0, covPart = cov.partial || 0, covNone = cov.none || 0;
+      overviewSec.appendChild(el('div', { className: 'telemetry-row' },
+        el('div', { className: 'telemetry-item' },
+          el('span', { className: 'telemetry-label' }, 'PRD Assertion Coverage'),
+          el('span', { className: 'telemetry-val' }, `${covFull} Full · ${covPart} Partial · ${covNone} None`)
+        ),
+        el('div', { className: 'telemetry-item' },
+          el('span', { className: 'telemetry-label' }, 'Scenario Execution'),
+          el('span', { className: 'telemetry-val' }, `${meta.probes_completed || 0} / ${meta.probes_total || 0} completed (${meta.probe_runtime_s || 0}s)`)
+        ),
+        el('div', { className: 'telemetry-item' },
+          el('span', { className: 'telemetry-label' }, 'Telemetry Expenditure'),
+          el('span', { className: 'telemetry-val' }, `${formatUsd(cost.total_usd)} this run (${formatUsd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd)} cold)`)
+        )
+      ));
+
+      // Area Breakdown + Unverified Explanations Grid
+      const summaryGrid = el('div', { className: 'summary-grid' });
+
+      // Area Breakdown Card
+      const areaCard = el('div', { className: 'area-table-card' },
+        el('div', { className: 'area-table-header' },
+          el('span', null, 'Breakdown by PRD Area'),
+          el('span', { style: 'font-size: 0.78rem; font-weight: normal; color: var(--text-dim);' }, 'Click row to filter matrix')
+        )
+      );
+      const areaTable = el('table', { className: 'area-table' },
+        el('thead', null, el('tr', null,
+          el('th', null, 'Area'), el('th', null, 'Pass'), el('th', null, 'Fail'), el('th', null, 'Unv'), el('th', null, 'Total'), el('th', { className: 'area-bar-col' }, 'Ratio')
+        ))
+      );
+      const areaTbody = el('tbody');
+      for (const [areaCode, aCounts] of Object.entries(summary.by_area || {})) {
+        const ap = aCounts.passed || 0, af = aCounts.failed || 0, au = aCounts.unverified || 0, at = ap + af + au || 1;
+        const areaRow = el('tr', {
+          className: 'area-row-interactive',
+          title: `Filter requirements to ${areaCode} (${getAreaName(areaCode)})`,
+          onclick: () => {
+            if (areaSelect) {
+              areaSelect.value = areaCode;
+              filterArea = areaCode;
+              if (applyReqFilters) applyReqFilters();
+              const reqSection = document.getElementById('section-requirements');
+              if (reqSection) reqSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        },
+          el('td', null,
+            el('span', { className: 'badge badge-area' }, areaCode),
+            el('span', { style: 'margin-left: 0.45rem; font-weight: 500; font-size: 0.8rem; color: var(--text-muted);' }, getAreaName(areaCode))
+          ),
+          el('td', { style: 'color: var(--pass-solid); font-weight: 700;' }, String(ap)),
+          el('td', { style: af > 0 ? 'color: var(--fail-solid); font-weight: 800;' : 'color: var(--text-dim);' }, String(af)),
+          el('td', { style: 'color: var(--text-dim);' }, String(au)),
+          el('td', { style: 'font-weight: 700;' }, String(at)),
+          el('td', { className: 'area-bar-col' },
+            el('div', { className: 'bar-stack', style: 'height: 6px; margin: 0;' },
+              el('div', { className: 'bar-segment bar-seg-pass', style: `width: ${(ap / at * 100)}%` }),
+              el('div', { className: 'bar-segment bar-seg-fail', style: `width: ${(af / at * 100)}%` }),
+              el('div', { className: 'bar-segment bar-seg-unverified', style: `width: ${(au / at * 100)}%` })
+            )
+          )
+        );
+        areaTbody.appendChild(areaRow);
+      }
+      areaTable.appendChild(areaTbody);
+      areaCard.appendChild(areaTable);
+      summaryGrid.appendChild(areaCard);
+
+      // Unverified Explanations Card
+      const reasonsBox = el('div', { className: 'reasons-box' },
+        el('h3', { style: 'font-size: 0.95rem; font-weight: 700;' }, 'Unverified Explanations & Methodology')
+      );
+      const reasonsUl = el('ul', { className: 'reasons-list' });
+      const summaryReasons = summary.reasons || {};
+      const reasonEntries = Object.entries(summaryReasons);
+      if (reasonEntries.length === 0) {
+        reasonsUl.appendChild(el('li', { className: 'reason-item' }, '✓ All requirements were completely verified with definitive assertions.'));
+      } else {
+        for (const [code, count] of reasonEntries) {
+          reasonsUl.appendChild(el('li', { className: 'reason-item' },
+            el('span', { className: 'reason-count' }, `${count} ×`),
+            el('span', { className: 'reason-text' }, reasons[code] || code)
+          ));
+        }
+      }
+      reasonsBox.appendChild(reasonsUl);
+      reasonsBox.appendChild(el('div', { className: 'how-to-read' },
+        el('p', null,
+          el('strong', null, 'Audit Standard: '),
+          el('strong', { style: 'color: var(--fail-solid);' }, 'failed'), ' = confirmed failure on re-run and verified as violating the PRD; ',
+          el('strong', { style: 'color: var(--unverified-solid);' }, 'unverified'), ' = insufficient evidence to guarantee verdict, never a guess.'
+        )
+      ));
+      summaryGrid.appendChild(reasonsBox);
+      overviewSec.appendChild(summaryGrid);
+
+      // Short "Defects found" list (clickable to jump into detail)
+      const failedReqs = requirements.filter(r => r.status === 'failed');
+      if (failedReqs.length > 0) {
+        const defectsCard = el('div', { className: 'defects-card' },
+          el('div', { className: 'defects-header' },
+            el('div', { className: 'defects-title' },
+              el('span', { className: 'badge badge-fail badge-lg' }, `🚨 ${failedReqs.length} Confirmed Defects`),
+              el('span', null, 'Identified PRD Non-Conformances')
+            ),
+            el('span', { className: 'defects-desc' }, 'Click any defect to drill into reproduction steps, assertion discrepancies & network evidence')
+          )
+        );
+        const defectsList = el('div', { className: 'defects-list' });
+        for (const r of failedReqs) {
+          const obsSnippet = getOneLineObserved(r);
+          defectsList.appendChild(el('div', {
+            className: 'defect-item',
+            role: 'button',
+            tabIndex: 0,
+            title: `Jump to ${r.id} details`,
+            onclick: () => jumpToReq(r.id),
+            onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpToReq(r.id); } }
+          },
+            el('div', { className: 'defect-meta' },
+              el('span', { className: 'mono defect-id' }, r.id),
+              el('span', { className: 'badge badge-area' }, r.area || 'GEN'),
+              el('span', { className: 'defect-title' }, r.title)
+            ),
+            el('div', { className: 'defect-obs' }, obsSnippet),
+            el('div', { className: 'defect-action' }, 'Drill in ➔')
+          ));
+        }
+        defectsCard.appendChild(defectsList);
+        overviewSec.appendChild(defectsCard);
+      } else {
+        overviewSec.appendChild(el('div', { className: 'no-defects-banner' },
+          el('span', { className: 'badge badge-pass badge-lg' }, '✓ 0 Defects Detected'),
+          el('span', null, 'All verified requirements conformed to the PRD specification with zero confirmed violations.')
+        ));
+      }
+
+      mainEl.appendChild(overviewSec);
+
+      // Helper to render network calls table
       function renderNetworkTable(networkCalls) {
-        const wrap = el('div', { className: 'data-table-wrap' });
+        const wrap = el('div', { className: 'table-container' });
         const table = el('table', { className: 'data-table' },
-          el('thead', null, el('tr', null, el('th', { style: 'width: 80px;' }, 'Method'), el('th', null, 'Path'), el('th', { style: 'width: 70px;' }, 'Status'), el('th', null, 'Request'), el('th', null, 'Response')))
+          el('thead', null, el('tr', null,
+            el('th', { style: 'width: 75px;' }, 'Method'),
+            el('th', null, 'Path'),
+            el('th', { style: 'width: 65px;' }, 'Status'),
+            el('th', null, 'Request Body'),
+            el('th', null, 'Response Body')
+          ))
         );
         const tbody = el('tbody');
         for (const net of networkCalls) {
           const st = Number(net.status);
           const stColor = st >= 400 ? 'var(--fail-solid)' : (st >= 300 ? '#d97706' : 'var(--pass-solid)');
           tbody.appendChild(el('tr', null,
-            el('td', { className: 'mono', style: 'font-weight: 600;' }, net.method || 'GET'),
-            el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, net.path || '/'),
-            el('td', { className: 'mono', style: `font-weight: 700; color: ${stColor};` }, String(net.status || '—')),
-            el('td', null, net.request ? el('pre', { className: 'obs-code' }, net.request) : '—'),
-            el('td', null, net.response ? el('pre', { className: 'obs-code' }, net.response) : '—')
+            el('td', { className: 'mono', style: 'font-weight: 700;' }, net.method || 'GET'),
+            el('td', { className: 'mono', style: 'font-size: 0.82rem; font-weight: 600;' }, net.path || '/'),
+            el('td', { className: 'mono', style: `font-weight: 800; color: ${stColor};` }, String(net.status || '—')),
+            el('td', null, net.request ? el('pre', { className: 'obs-code' }, typeof net.request === 'string' ? net.request : JSON.stringify(net.request, null, 2)) : '—'),
+            el('td', null, net.response ? el('pre', { className: 'obs-code' }, typeof net.response === 'string' ? net.response : JSON.stringify(net.response, null, 2)) : '—')
           ));
         }
         table.appendChild(tbody);
@@ -405,174 +1365,134 @@
         return wrap;
       }
 
-      // 3. Failures First
-      const failedReqs = requirements.filter(r => r.status === 'failed');
-      const failuresSec = el('section', { className: 'section-card' },
+      // 3. Requirements Verification Matrix Section
+      const reqSec = el('section', { className: 'section-card', id: 'section-requirements' },
         el('div', { className: 'section-header' },
-          el('h2', { style: failedReqs.length > 0 ? 'color: var(--fail-solid);' : '' }, `Failed Requirements (${failedReqs.length})`),
-          el('span', { className: 'section-desc' }, 'Confirmed non-conformance with PRD requirements')
+          el('h2', null, `Requirements Verification Matrix (${requirements.length})`),
+          el('span', { className: 'section-desc' }, 'Assertion traceability, LLM reviews & automated verification checks')
         )
       );
 
-      if (failedReqs.length === 0) {
-        failuresSec.appendChild(el('div', { style: 'color: var(--pass-solid); font-weight: 600; padding: 1rem 0;' }, '✓ No requirement failures were detected in this audit.'));
-      } else {
-        for (const r of failedReqs) {
-          const fCard = el('article', { className: 'failure-card' });
-          const fHead = el('div', { className: 'failure-head' },
-            el('div', { className: 'failure-title-wrap' },
-              el('span', { className: 'failure-id' }, r.id),
-              el('span', { className: 'badge badge-area' }, r.area || 'GEN'),
-              el('h3', { className: 'failure-title' }, r.title)
-            )
-          );
-          if (r.review) {
-            fHead.appendChild(el('span', { className: 'review-pill' },
-              `Reviewed: ${r.review.verdict || 'violates'}, p=${r.review.p ?? '—'}, ${r.review.model || ''} (${r.review.provider || ''})`
-            ));
-          }
-          fCard.appendChild(fHead);
-
-          if (r.source_quote || r.statement) {
-            const bquote = el('blockquote', { className: 'prd-quote' }, el('p', null, `“${r.source_quote || r.statement}”`));
-            if (r.source_bullets && r.source_bullets.length > 0) {
-              const bulletsDiv = el('div', { className: 'quote-footer' });
-              for (const b of r.source_bullets) bulletsDiv.appendChild(el('span', { className: 'badge badge-bullet' }, b));
-              bquote.appendChild(bulletsDiv);
-            }
-            fCard.appendChild(bquote);
-          }
-
-          const fChecks = (r.failure && r.failure.checks) ? r.failure.checks : [];
-          if (fChecks.length > 0) {
-            fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Assertion Discrepancies:'));
-            const cTableWrap = el('div', { className: 'data-table-wrap' });
-            const cTable = el('table', { className: 'data-table' },
-              el('thead', null, el('tr', null, el('th', { style: 'width: 25%;' }, 'Check ID'), el('th', { style: 'width: 30%;' }, 'Expected'), el('th', null, 'Observed')))
-            );
-            const cTbody = el('tbody');
-            for (const chk of fChecks) {
-              cTbody.appendChild(el('tr', null,
-                el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, chk.check_id || 'check'),
-                el('td', null, chk.expected || '—'),
-                el('td', null, el('pre', { className: 'obs-code' }, chk.observed || '—'))
-              ));
-            }
-            cTable.appendChild(cTbody);
-            cTableWrap.appendChild(cTable);
-            fCard.appendChild(cTableWrap);
-          }
-
-          if (r.failure && r.failure.steps && r.failure.steps.length > 0) {
-            fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Steps to Reproduce:'));
-            const ol = el('ol', { className: 'repro-steps' });
-            for (const st of r.failure.steps) ol.appendChild(el('li', null, st));
-            fCard.appendChild(ol);
-          }
-
-          const failProbeId = r.failure ? r.failure.probe_id : (r.probes && r.probes[0]);
-          const probeObj = failProbeId ? probes[failProbeId] : null;
-          if (probeObj) {
-            if (probeObj.screenshots && probeObj.screenshots.length > 0) {
-              fCard.appendChild(el('h4', { style: 'font-size: 0.92rem; margin-top: 0.75rem;' }, 'Failure Screenshots:'));
-              const gallery = el('div', { className: 'shots-gallery' });
-              for (const shot of probeObj.screenshots) {
-                gallery.appendChild(el('div', { className: 'shot-thumb-card', onclick: () => openLightbox(shot.src, shot.caption) },
-                  el('img', { className: 'shot-thumb-img', src: shot.src, alt: shot.caption || 'Failure screenshot', loading: 'lazy' }),
-                  el('div', { className: 'shot-thumb-caption' }, shot.caption || shot.name)
-                ));
-              }
-              fCard.appendChild(gallery);
-            }
-            if (probeObj.network && probeObj.network.length > 0) {
-              fCard.appendChild(el('details', { className: 'sub-details' },
-                el('summary', null, `Scenario Network Calls (${probeObj.network.length}) — Probe: ${failProbeId}`),
-                el('div', { className: 'sub-content' }, renderNetworkTable(probeObj.network))
-              ));
-            }
-          }
-          failuresSec.appendChild(fCard);
-        }
-      }
-      mainEl.appendChild(failuresSec);
-
-      // 4. All Requirements Section
-      const allReqsSec = el('section', { className: 'section-card' },
-        el('div', { className: 'section-header' }, el('h2', null, 'All Requirements'), el('span', { className: 'section-desc' }, 'Comprehensive verification matrix & assertion traceability'))
-      );
-
-      let filterStatus = 'all', filterArea = 'all', searchQuery = '';
       const uniqueAreas = Array.from(new Set(requirements.map(r => r.area).filter(Boolean))).sort();
       const toolbar = el('div', { className: 'filters-toolbar' });
 
-      toolbar.appendChild(el('input', {
-        type: 'search', className: 'search-box', placeholder: 'Search requirements by ID, title, PRD text, or note...',
-        oninput: (e) => { searchQuery = e.target.value.toLowerCase().trim(); applyReqFilters(); }
-      }));
+      searchInput = el('input', {
+        type: 'search',
+        className: 'search-box',
+        placeholder: 'Search requirements by ID, title, PRD statement, or keywords...',
+        'aria-label': 'Search requirements',
+        oninput: (e) => {
+          searchQuery = e.target.value.toLowerCase().trim();
+          applyReqFilters();
+        }
+      });
+      toolbar.appendChild(searchInput);
 
       const statusGroup = el('div', { className: 'filter-group' });
       const chips = [
         { id: 'all', label: `All (${requirements.length})` },
-        { id: 'passed', label: `Passed (${passedCount})` },
-        { id: 'failed', label: `Failed (${failedCount})` },
-        { id: 'unverified', label: `Unverified (${unverifiedCount})` }
+        { id: 'failed', label: `Failed (${failedCount})`, isFail: true },
+        { id: 'unverified', label: `Unverified (${unverifiedCount})` },
+        { id: 'passed', label: `Passed (${passedCount})` }
       ];
       const chipButtons = {};
       for (const chip of chips) {
         const btn = el('button', {
-          type: 'button', className: `filter-chip ${chip.id === 'all' ? 'active' : ''}`,
+          type: 'button',
+          className: `filter-chip ${chip.id === 'all' ? 'active' : ''}`,
           onclick: () => {
             filterStatus = chip.id;
-            for (const b of Object.values(chipButtons)) b.classList.remove('active');
-            btn.classList.add('active');
+            updateStatusChips();
             applyReqFilters();
           }
         }, chip.label);
-        chipButtons[chip.id] = btn;
+        chipButtons[chip.id] = { btn, isFail: chip.isFail };
         statusGroup.appendChild(btn);
       }
       toolbar.appendChild(statusGroup);
 
-      toolbar.appendChild(el('select', {
+      updateStatusChips = function() {
+        for (const [id, item] of Object.entries(chipButtons)) {
+          item.btn.classList.remove('active', 'active-fail');
+          if (id === filterStatus) {
+            if (item.isFail) item.btn.classList.add('active-fail');
+            else item.btn.classList.add('active');
+          }
+        }
+      };
+
+      areaSelect = el('select', {
         className: 'filter-select',
-        onchange: (e) => { filterArea = e.target.value; applyReqFilters(); }
-      }, el('option', { value: 'all' }, 'All Areas'), uniqueAreas.map(a => el('option', { value: a }, a))));
+        'aria-label': 'Filter by PRD Area',
+        onchange: (e) => {
+          filterArea = e.target.value;
+          applyReqFilters();
+        }
+      },
+        el('option', { value: 'all' }, 'All Areas'),
+        uniqueAreas.map(a => el('option', { value: a }, `${a} — ${getAreaName(a)}`))
+      );
+      toolbar.appendChild(areaSelect);
+
+      const expandAllBtn = el('button', {
+        type: 'button',
+        className: 'btn-secondary',
+        onclick: () => setAllReqsOpen(true)
+      }, 'Expand all');
+      const collapseAllBtn = el('button', {
+        type: 'button',
+        className: 'btn-secondary',
+        onclick: () => setAllReqsOpen(false)
+      }, 'Collapse all');
+      toolbar.appendChild(expandAllBtn);
+      toolbar.appendChild(collapseAllBtn);
 
       const countLabel = el('span', { className: 'filter-count' }, `Showing ${requirements.length} of ${requirements.length}`);
       toolbar.appendChild(countLabel);
-      allReqsSec.appendChild(toolbar);
+      reqSec.appendChild(toolbar);
 
-      const reqTableWrap = el('div', { className: 'data-table-wrap' });
-      const reqTable = el('table', { className: 'data-table' },
-        el('thead', null, el('tr', null, el('th', { style: 'width: 30px;' }, ''), el('th', { style: 'width: 100px;' }, 'ID'), el('th', { style: 'width: 70px;' }, 'Area'), el('th', null, 'Title'), el('th', { style: 'width: 110px;' }, 'Status'), el('th', { style: 'width: 120px;' }, 'Coverage'), el('th', null, 'Reason / Verdict')))
-      );
-      const reqTbody = el('tbody');
-      reqTable.appendChild(reqTbody);
-      reqTableWrap.appendChild(reqTable);
-      allReqsSec.appendChild(reqTableWrap);
+      const reqContainer = el('div', { className: 'req-list' });
+      const reqCardElements = [];
 
-      const rowElements = [];
+      function setAllReqsOpen(isOpen) {
+        for (const item of reqCardElements) {
+          if (item.card.style.display !== 'none') {
+            item.card.open = isOpen;
+          }
+        }
+      }
+
       requirements.forEach((req) => {
-        let isExpanded = false;
-        const expandBtn = el('button', { type: 'button', className: 'req-expand-btn', 'aria-label': 'Expand row details', 'aria-expanded': 'false' }, '+');
-        const mainRow = el('tr', { className: 'req-row-main' },
-          el('td', null, expandBtn),
-          el('td', { className: 'mono', style: 'font-weight: 700;' }, req.id),
-          el('td', null, el('span', { className: 'badge badge-area' }, req.area || '—')),
-          el('td', { style: 'font-weight: 500;' }, req.title),
-          el('td', null, statusBadge(req.status)),
-          el('td', null, coverageBadge(req.coverage)),
-          el('td', { style: 'color: var(--text-muted); font-size: 0.82rem;' }, req.reason_text || (req.review ? `Review: ${req.review.verdict}` : '—'))
+        const statusClass = req.status === 'failed' ? 'req-card-fail' : (req.status === 'unverified' ? 'req-card-unverified' : 'req-card-pass');
+        const reqCard = el('details', { className: `req-card ${statusClass}`, id: `req-${req.id}` });
+
+        // Summary (Collapsed disclosure bar)
+        const summaryEl = el('summary', { className: 'req-summary' },
+          el('div', { className: 'req-summary-left' },
+            el('span', { className: 'chevron-icon', 'aria-hidden': 'true' }, '▶'),
+            statusBadge(req.status),
+            el('span', { className: 'mono req-id' }, req.id),
+            el('span', { className: 'badge badge-area' }, req.area || 'GEN'),
+            el('span', { className: 'req-title' }, req.title)
+          ),
+          el('div', { className: 'req-summary-right' },
+            coverageBadge(req.coverage),
+            req.review ? el('span', { className: 'badge', style: 'background: var(--bg-subtle); color: var(--text-muted); font-size: 0.75rem;' },
+              `Review: ${req.review.verdict} (p=${req.review.p ?? '—'})`
+            ) : null,
+            req.reason_text ? el('span', { className: 'req-reason-pill' }, req.reason_text) : null
+          )
         );
+        reqCard.appendChild(summaryEl);
 
-        const detailRow = el('tr', { className: 'req-row-detail', style: 'display: none;' });
-        const detailCell = el('td', { colSpan: 7 });
-        const detailContainer = el('div', { className: 'req-detail-container' });
+        // Body (Detailed information)
+        const reqBody = el('div', { className: 'req-body' });
 
+        // Statement & PRD Quote
         if (req.statement) {
-          detailContainer.appendChild(el('div', null,
-            el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, 'PRD Requirement Statement:'),
-            el('p', { style: 'margin-top: 0.2rem; font-size: 0.92rem;' }, req.statement)
+          reqBody.appendChild(el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, 'PRD Requirement Statement'),
+            el('p', { style: 'font-size: 0.92rem; color: var(--text-main); font-weight: 500;' }, req.statement)
           ));
         }
 
@@ -583,41 +1503,76 @@
             for (const b of req.source_bullets) bdiv.appendChild(el('span', { className: 'badge badge-bullet' }, b));
             q.appendChild(bdiv);
           }
-          detailContainer.appendChild(q);
+          reqBody.appendChild(q);
         }
 
+        // Assertions
         if (req.assertions && req.assertions.length > 0) {
-          detailContainer.appendChild(el('div', null,
-            el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, 'Assertions:'),
-            el('ul', { style: 'margin-left: 1.25rem; font-size: 0.88rem; margin-top: 0.25rem;' }, req.assertions.map(a => el('li', null, a)))
+          reqBody.appendChild(el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, `Expected Assertions (${req.assertions.length})`),
+            el('ul', { className: 'assertions-list' }, req.assertions.map(a => el('li', null, a)))
           ));
         }
 
-        if (req.reason_text || (req.link && req.link.rationale)) {
-          detailContainer.appendChild(el('div', { style: 'font-size: 0.85rem;' },
-            req.reason_text ? el('div', null, el('strong', null, 'Why: '), req.reason_text) : null,
-            req.link && req.link.rationale ? el('div', { style: 'margin-top: 0.25rem;' },
-              el('strong', null, 'How checks were linked: '),
-              el('span', { className: 'obs-code', style: 'display: inline-block;' }, req.link.rationale)) : null
-          ));
+        // LLM Review details if present
+        if (req.review) {
+          const rev = req.review;
+          const revBanner = el('div', { className: 'review-banner' },
+            el('div', { className: 'review-top' },
+              el('span', { className: 'detail-title' }, 'LLM Verdict Review:'),
+              el('span', { className: 'badge', style: 'background: var(--bg-card); font-weight: 700;' }, rev.verdict || '—'),
+              el('span', { className: 'mono', style: 'font-weight: 600;' }, `p = ${rev.p ?? '—'}`),
+              el('span', { style: 'color: var(--text-dim);' }, `Model: ${rev.model || '—'} (${rev.provider || '—'})`),
+              rev.escalated ? el('span', { className: 'badge badge-fail' }, 'ESCALATED') : null
+            )
+          );
+          if (rev.probabilities) {
+            const probsDiv = el('div', { className: 'review-probs' });
+            for (const [pk, pv] of Object.entries(rev.probabilities)) {
+              probsDiv.appendChild(el('span', { className: 'prob-pill mono' }, `${pk}: ${(Number(pv) * 100).toFixed(1)}%`));
+            }
+            revBanner.appendChild(probsDiv);
+          }
+          if (rev.rationale) {
+            revBanner.appendChild(el('div', { style: 'font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem;' },
+              el('strong', null, 'Reviewer Rationale: '), rev.rationale
+            ));
+          }
+          reqBody.appendChild(revBanner);
         }
 
+        // Linked Checks Table
         if (req.checks && req.checks.length > 0) {
-          detailContainer.appendChild(el('strong', { style: 'font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase;' }, `Linked Verification Checks (${req.checks.length}):`));
-          const chkTableWrap = el('div', { className: 'data-table-wrap' });
-          const chkTable = el('table', { className: 'data-table' },
-            el('thead', null, el('tr', null, el('th', { style: 'width: 90px;' }, 'Status'), el('th', null, 'Check ID'), el('th', null, 'Probe Scenario'), el('th', null, 'Expected'), el('th', null, 'Observed')))
+          const checksGroup = el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, `Linked Verification Checks (${req.checks.length})`)
+          );
+          const chkTableWrap = el('div', { className: 'table-container' });
+          // Fixed layout so long monospace ids cannot squeeze the Observed column; on narrow screens the
+          // table keeps a readable minimum width and scrolls inside its own container.
+          const chkTable = el('table', { className: 'data-table', style: 'table-layout: fixed; min-width: 760px;' },
+            el('thead', null, el('tr', null,
+              el('th', { style: 'width: 90px;' }, 'Status'),
+              el('th', { style: 'width: 24%;' }, 'Check ID'),
+              el('th', { style: 'width: 16%;' }, 'Probe Scenario'),
+              el('th', { style: 'width: 20%;' }, 'Expected'),
+              el('th', null, 'Observed')
+            ))
           );
           const chkTbody = el('tbody');
-          for (const c of req.checks) {
+          // Failures first, then undecided checks, then passes: the evidence that matters is on top.
+          const rank = { fail: 0, unknown: 1, pass: 2 };
+          const ordered = [...req.checks].sort((a, b) => (rank[a.status] ?? 1) - (rank[b.status] ?? 1));
+          for (const c of ordered) {
             const probeBtn = el('a', {
-              href: `#probe-${c.probe_id}`, className: 'mono', style: 'font-size: 0.82rem;',
+              href: `#probe-${c.probe_id}`,
+              className: 'mono',
+              style: 'font-size: 0.82rem; font-weight: 600;',
               onclick: (e) => { e.preventDefault(); jumpToProbe(c.probe_id); }
-            }, c.probe_id || '—');
+            }, `➔ ${c.probe_id || '—'}`);
 
             chkTbody.appendChild(el('tr', null,
               el('td', null, statusBadge(c.status)),
-              el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, c.id),
+              el('td', { className: 'mono', style: 'font-size: 0.82rem; overflow-wrap: anywhere;' }, c.id),
               el('td', null, probeBtn),
               el('td', { style: 'font-size: 0.85rem;' }, c.expected || '—'),
               el('td', null, c.observed ? el('pre', { className: 'obs-code' }, c.observed) : '—')
@@ -625,79 +1580,182 @@
           }
           chkTable.appendChild(chkTbody);
           chkTableWrap.appendChild(chkTable);
-          detailContainer.appendChild(chkTableWrap);
+          checksGroup.appendChild(chkTableWrap);
+          reqBody.appendChild(checksGroup);
         }
 
+        // Failure Deep-Dive (if failed)
+        if (req.status === 'failed') {
+          const fBox = el('div', { className: 'failure-box' },
+            el('div', { className: 'failure-box-title' }, '🚨 Failure Analysis & Reproduction Evidence')
+          );
+
+          if (req.failure && req.failure.steps && req.failure.steps.length > 0) {
+            fBox.appendChild(el('div', { className: 'detail-group' },
+              el('span', { className: 'detail-title', style: 'color: var(--fail-text);' }, 'Reproduction Steps:'),
+              el('ol', { className: 'repro-steps' }, req.failure.steps.map(st => el('li', null, st)))
+            ));
+          }
+
+          const fChecks = (req.failure && req.failure.checks) ? req.failure.checks : [];
+          if (fChecks.length > 0) {
+            fBox.appendChild(el('div', { className: 'detail-group' },
+              el('span', { className: 'detail-title', style: 'color: var(--fail-text);' }, 'Assertion Discrepancy Matrix:'),
+              el('div', { className: 'table-container' },
+                el('table', { className: 'data-table' },
+                  el('thead', null, el('tr', null,
+                    el('th', { style: 'width: 25%;' }, 'Check ID'),
+                    el('th', { style: 'width: 30%;' }, 'Expected Result'),
+                    el('th', null, 'Observed Discrepancy')
+                  )),
+                  el('tbody', null, fChecks.map(chk => el('tr', null,
+                    el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, chk.check_id || 'check'),
+                    el('td', null, chk.expected || '—'),
+                    el('td', null, el('pre', { className: 'obs-code' }, chk.observed || '—'))
+                  )))
+                )
+              )
+            ));
+          }
+
+          const failProbeId = req.failure ? req.failure.probe_id : (req.probes && req.probes[0]);
+          const probeObj = failProbeId ? probes[failProbeId] : null;
+          if (probeObj) {
+            if (probeObj.screenshots && probeObj.screenshots.length > 0) {
+              const gallery = el('div', { className: 'shots-gallery' });
+              for (const shot of probeObj.screenshots) {
+                gallery.appendChild(el('div', {
+                  className: 'shot-card',
+                  title: 'Click to enlarge screenshot',
+                  onclick: () => openLightbox(shot.src, shot.caption)
+                },
+                  el('img', { className: 'shot-thumb', src: shot.src, alt: shot.caption || 'Failure screenshot', loading: 'lazy' }),
+                  el('div', { className: 'shot-caption' }, shot.caption || shot.name)
+                ));
+              }
+              fBox.appendChild(el('div', { className: 'detail-group' },
+                el('span', { className: 'detail-title', style: 'color: var(--fail-text);' }, `Evidence Screenshots (${probeObj.screenshots.length}):`),
+                gallery
+              ));
+            }
+            if (probeObj.network && probeObj.network.length > 0) {
+              fBox.appendChild(el('details', { className: 'sub-details' },
+                el('summary', null, `Scenario API & Network Calls (${probeObj.network.length}) — Probe: ${failProbeId}`),
+                el('div', { className: 'sub-content' }, renderNetworkTable(probeObj.network))
+              ));
+            }
+          }
+          reqBody.appendChild(fBox);
+        }
+
+        // Link Rationale & Traceability
+        if (req.reason_text || (req.link && req.link.rationale)) {
+          reqBody.appendChild(el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, 'Link Traceability & Rationale'),
+            req.reason_text ? el('div', { style: 'font-size: 0.86rem;' }, el('strong', null, 'Why: '), req.reason_text) : null,
+            req.link && req.link.rationale ? el('div', { style: 'font-size: 0.86rem; margin-top: 0.25rem;' },
+              el('strong', null, 'Rationale: '), req.link.rationale
+            ) : null
+          ));
+        }
+
+        // Linked Scenarios buttons
         if (req.probes && req.probes.length > 0) {
-          const pLinks = el('div', { style: 'display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; font-size: 0.85rem;' },
-            el('strong', { style: 'color: var(--text-dim);' }, 'Linked Scenarios:')
+          const pLinks = el('div', { style: 'display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem;' },
+            el('span', { className: 'detail-title', style: 'margin-right: 0.25rem;' }, 'Linked Probe Scenarios:')
           );
           for (const pid of req.probes) {
             pLinks.appendChild(el('button', {
-              type: 'button', className: 'filter-chip', style: 'font-size: 0.78rem; font-family: var(--font-mono);',
+              type: 'button',
+              className: 'filter-chip',
+              style: 'font-family: var(--font-mono); font-size: 0.78rem; padding: 0.25rem 0.65rem;',
               onclick: () => jumpToProbe(pid)
             }, `➔ ${pid}`));
           }
-          detailContainer.appendChild(pLinks);
+          reqBody.appendChild(pLinks);
         }
 
-        detailCell.appendChild(detailContainer);
-        detailRow.appendChild(detailCell);
-
-        function toggleRow() {
-          isExpanded = !isExpanded;
-          detailRow.style.display = isExpanded ? 'table-row' : 'none';
-          expandBtn.textContent = isExpanded ? '−' : '+';
-          expandBtn.setAttribute('aria-expanded', String(isExpanded));
-        }
-
-        mainRow.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') toggleRow();
-        });
-        expandBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(); });
-
-        reqTbody.appendChild(mainRow);
-        reqTbody.appendChild(detailRow);
-        rowElements.push({ req, mainRow, detailRow });
+        reqCard.appendChild(reqBody);
+        reqContainer.appendChild(reqCard);
+        reqCardElements.push({ req, card: reqCard });
       });
 
-      function applyReqFilters() {
+      reqSec.appendChild(reqContainer);
+
+      applyReqFilters = function() {
         let visibleCount = 0;
-        for (const item of rowElements) {
+        for (const item of reqCardElements) {
           const r = item.req;
           let match = true;
           if (filterStatus !== 'all' && r.status !== filterStatus) match = false;
           if (filterArea !== 'all' && r.area !== filterArea) match = false;
           if (match && searchQuery) {
-            const txt = [r.id, r.title, r.statement, r.source_quote, r.reason_text].filter(Boolean).join(' ').toLowerCase();
+            const txt = [r.id, r.title, r.statement, r.source_quote, r.reason_text, ...(r.assertions || [])].filter(Boolean).join(' ').toLowerCase();
             if (!txt.includes(searchQuery)) match = false;
           }
-          item.mainRow.style.display = match ? 'table-row' : 'none';
-          if (!match) item.detailRow.style.display = 'none';
+          item.card.style.display = match ? 'block' : 'none';
           if (match) visibleCount++;
         }
         countLabel.textContent = `Showing ${visibleCount} of ${requirements.length}`;
-      }
-      mainEl.appendChild(allReqsSec);
+      };
 
-      // 5. Scenarios (Probes) Section
+      mainEl.appendChild(reqSec);
+
+      // 4. Scenario Probes Section (Detailed, collapsed by default)
       const probeEntries = Object.values(probes);
-      const probesSec = el('section', { className: 'section-card' },
+      const probesSec = el('section', { className: 'section-card', id: 'section-probes' },
         el('div', { className: 'section-header' },
-          el('h2', null, `Scenarios & Probe Evidence (${probeEntries.length})`),
-          el('span', { className: 'section-desc' }, 'Automated browser interactions, assertions & collected artifacts')
+          el('h2', null, `Scenario Probes & Browser Evidence (${probeEntries.length})`),
+          el('span', { className: 'section-desc' }, 'Recorded browser interactions, step traces, screenshots & API telemetries')
         )
       );
 
-      const probesContainer = el('div', { style: 'display: flex; flex-direction: column; gap: 0.5rem;' });
+      const probeToolbar = el('div', { className: 'filters-toolbar' });
+      const probeSearchInput = el('input', {
+        type: 'search',
+        className: 'search-box',
+        placeholder: 'Search scenarios by ID, title, area...',
+        'aria-label': 'Search scenarios'
+      });
+      probeToolbar.appendChild(probeSearchInput);
+
+      const probeExpandAllBtn = el('button', {
+        type: 'button',
+        className: 'btn-secondary',
+        onclick: () => setAllProbesOpen(true)
+      }, 'Expand all');
+      const probeCollapseAllBtn = el('button', {
+        type: 'button',
+        className: 'btn-secondary',
+        onclick: () => setAllProbesOpen(false)
+      }, 'Collapse all');
+      probeToolbar.appendChild(probeExpandAllBtn);
+      probeToolbar.appendChild(probeCollapseAllBtn);
+
+      const probeCountLabel = el('span', { className: 'filter-count' }, `Showing ${probeEntries.length} scenarios`);
+      probeToolbar.appendChild(probeCountLabel);
+      probesSec.appendChild(probeToolbar);
+
+      const probesContainer = el('div', { style: 'display: flex; flex-direction: column; gap: 0.65rem;' });
+      const probeCardElements = [];
+
+      function setAllProbesOpen(isOpen) {
+        for (const item of probeCardElements) {
+          if (item.card.style.display !== 'none') {
+            item.card.open = isOpen;
+          }
+        }
+      }
+
       for (const p of probeEntries) {
         const pDetails = el('details', { className: 'probe-card', id: `probe-${p.id}` });
-        const pSummary = el('summary', null,
+        const pSummary = el('summary', { className: 'probe-summary' },
           el('div', { className: 'probe-summary-left' },
-            el('span', { className: 'mono', style: 'font-weight: 700;' }, p.id),
+            el('span', { className: 'chevron-icon', 'aria-hidden': 'true' }, '▶'),
+            el('span', { className: 'mono req-id' }, p.id),
             el('span', { className: 'badge badge-area' }, p.area || 'GEN'),
             kindBadge(p.kind),
-            el('span', { style: 'font-weight: 600;' }, p.title || p.id)
+            el('span', { style: 'font-weight: 600; font-size: 0.9rem;' }, p.title || p.id)
           ),
           el('div', { className: 'probe-summary-right' },
             p.duration_ms != null ? el('span', { className: 'mono', style: 'font-size: 0.8rem; color: var(--text-dim);' }, `${(p.duration_ms / 1000).toFixed(1)}s`) : null,
@@ -708,38 +1766,44 @@
 
         const pBody = el('div', { className: 'probe-body' });
         if (p.error) {
-          pBody.appendChild(el('div', { className: 'warning-box', style: 'margin-bottom: 1rem;' },
-            el('strong', null, 'Scenario Error: '), String(p.error)
+          pBody.appendChild(el('div', { className: 'warning-box' },
+            el('strong', null, 'Scenario Execution Error: '), String(p.error)
           ));
         }
 
         if (p.steps && p.steps.length > 0) {
-          pBody.appendChild(el('h4', { style: 'font-size: 0.9rem; margin-bottom: 0.5rem;' }, 'Executed Steps:'));
-          const stepsList = el('div', { style: 'display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem;' });
-          for (const step of p.steps) {
-            const isOk = step.ok !== false;
-            const stepRow = el('div', { className: `step-item ${isOk ? '' : 'step-failed'}` },
-              el('span', { className: 'step-num' }, `${step.n ?? '•'}.`),
-              el('span', null, step.text || 'Action'),
-              !isOk ? el('span', { className: 'badge badge-fail', style: 'margin-left: 0.5rem;' }, 'FAILED') : null
-            );
-            if (step.detail) stepRow.appendChild(el('span', { style: 'font-size: 0.8rem; color: var(--fail-solid); margin-left: 0.5rem;' }, `(${step.detail})`));
-            stepsList.appendChild(stepRow);
-          }
-          pBody.appendChild(stepsList);
+          pBody.appendChild(el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, `Executed Actions & Assertions (${p.steps.length})`),
+            el('div', { style: 'display: flex; flex-direction: column; gap: 0.2rem;' },
+              p.steps.map(step => {
+                const isOk = step.ok !== false;
+                const stepRow = el('div', { className: `step-item ${isOk ? '' : 'step-failed'}` },
+                  el('span', { className: 'step-num' }, `${step.n ?? '•'}.`),
+                  el('span', { style: 'flex: 1;' }, step.text || 'Action'),
+                  !isOk ? el('span', { className: 'badge badge-fail' }, 'FAILED') : null
+                );
+                if (step.detail) stepRow.appendChild(el('span', { className: 'mono', style: 'font-size: 0.78rem; color: var(--fail-solid);' }, `(${step.detail})`));
+                return stepRow;
+              })
+            )
+          ));
         }
 
-        // Lazy Screenshots: created ONLY when section is opened!
+        // Lazy screenshots
         const shotsContainer = el('div', { className: 'shots-gallery' });
-        let screenshotsInstantiated = false;
+        let screenshotsRendered = false;
         pDetails.addEventListener('toggle', () => {
-          if (pDetails.open && !screenshotsInstantiated) {
-            screenshotsInstantiated = true;
+          if (pDetails.open && !screenshotsRendered) {
+            screenshotsRendered = true;
             if (p.screenshots && p.screenshots.length > 0) {
               for (const shot of p.screenshots) {
-                shotsContainer.appendChild(el('div', { className: 'shot-thumb-card', onclick: () => openLightbox(shot.src, shot.caption) },
-                  el('img', { className: 'shot-thumb-img', src: shot.src, alt: shot.caption || 'Scenario screenshot', loading: 'lazy' }),
-                  el('div', { className: 'shot-thumb-caption' }, shot.caption || shot.name)
+                shotsContainer.appendChild(el('div', {
+                  className: 'shot-card',
+                  title: 'Click to enlarge screenshot',
+                  onclick: () => openLightbox(shot.src, shot.caption)
+                },
+                  el('img', { className: 'shot-thumb', src: shot.src, alt: shot.caption || 'Scenario screenshot', loading: 'lazy' }),
+                  el('div', { className: 'shot-caption' }, shot.caption || shot.name)
                 ));
               }
             }
@@ -747,8 +1811,10 @@
         });
 
         if (p.screenshots && p.screenshots.length > 0) {
-          pBody.appendChild(el('h4', { style: 'font-size: 0.9rem; margin-top: 0.75rem;' }, `Evidence Screenshots (${p.screenshots.length}):`));
-          pBody.appendChild(shotsContainer);
+          pBody.appendChild(el('div', { className: 'detail-group' },
+            el('span', { className: 'detail-title' }, `Evidence Screenshots (${p.screenshots.length}):`),
+            shotsContainer
+          ));
         }
 
         if (p.network && p.network.length > 0) {
@@ -766,41 +1832,79 @@
         }
 
         if (p.recoveries && p.recoveries.length > 0) {
-          pBody.appendChild(el('div', { className: 'warning-box', style: 'margin-top: 0.75rem;' },
-            el('strong', null, 'Auto-Recoveries: '),
+          pBody.appendChild(el('div', { className: 'warning-box' },
+            el('strong', null, 'Autonomous Resilience Recoveries:'),
             el('pre', { className: 'obs-code', style: 'margin-top: 0.5rem;' }, JSON.stringify(p.recoveries, null, 2))
           ));
         }
 
         pDetails.appendChild(pBody);
         probesContainer.appendChild(pDetails);
+        probeCardElements.push({ probe: p, card: pDetails });
       }
+
+      probeSearchInput.addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        let visible = 0;
+        for (const item of probeCardElements) {
+          const p = item.probe;
+          const txt = [p.id, p.title, p.area, p.kind].filter(Boolean).join(' ').toLowerCase();
+          const match = !q || txt.includes(q);
+          item.card.style.display = match ? 'block' : 'none';
+          if (match) visible++;
+        }
+        probeCountLabel.textContent = `Showing ${visible} of ${probeEntries.length} scenarios`;
+      });
+
       probesSec.appendChild(probesContainer);
       mainEl.appendChild(probesSec);
 
-      // 6. Cost Section
-      const costSec = el('section', { className: 'section-card' },
-        el('div', { className: 'section-header' },
-          el('h2', null, 'Execution Cost & LLM Usage'),
-          el('span', { className: 'section-desc' }, 'Model token telemetry and dollar expenditures by phase')
+      // 5. Cost Breakdown Section (Detailed, collapsible table)
+      const costSec = el('details', { className: 'cost-card', id: 'section-cost' });
+      const phases = cost.phases || [];
+      const sum = key => phases.reduce((acc, p) => acc + (p[key] || 0), 0);
+      const totalCalls = sum('calls');
+      const totalInputTokens = sum('input_tokens');
+      const totalOutputTokens = sum('output_tokens');
+
+      const costSummary = el('summary', { className: 'cost-summary' },
+        el('div', { style: 'display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;' },
+          el('span', { className: 'chevron-icon', 'aria-hidden': 'true' }, '▶'),
+          el('h2', { style: 'font-size: 1.15rem; font-weight: 700; margin: 0;' }, 'Audit Telemetry & LLM Expenditure'),
+          el('span', { className: 'badge', style: 'background: var(--primary-subtle); color: var(--primary); font-weight: 700;' },
+            `This run: ${formatUsd(cost.total_usd)}`
+          ),
+          el('span', { className: 'badge', style: 'background: var(--bg-subtle); color: var(--text-dim);' },
+            `Cold run: ${formatUsd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd)}`
+          )
+        ),
+        el('span', { style: 'font-size: 0.82rem; color: var(--text-dim); font-weight: 600;' },
+          `${formatNum(totalCalls)} calls · ${formatNum(totalInputTokens + totalOutputTokens)} tokens`
         )
       );
+      costSec.appendChild(costSummary);
 
-      const costTableWrap = el('div', { className: 'data-table-wrap' });
+      const costBody = el('div', { className: 'cost-body' });
+      const costTableWrap = el('div', { className: 'table-container' });
       const costTable = el('table', { className: 'data-table' },
         el('thead', null, el('tr', null,
-          el('th', null, 'Phase'), el('th', null, 'Provider'), el('th', null, 'Models'),
-          el('th', { style: 'text-align: right;' }, 'Calls'), el('th', { style: 'text-align: right;' }, 'Cached'),
-          el('th', { style: 'text-align: right;' }, 'Input Tokens'), el('th', { style: 'text-align: right;' }, 'Output Tokens'),
-          el('th', { style: 'text-align: right;' }, 'This run (USD)'), el('th', { style: 'text-align: right;' }, 'Cold run (USD)')
+          el('th', null, 'Phase'),
+          el('th', null, 'Provider'),
+          el('th', null, 'Models'),
+          el('th', { style: 'text-align: right;' }, 'Calls'),
+          el('th', { style: 'text-align: right;' }, 'Cached'),
+          el('th', { style: 'text-align: right;' }, 'Input Tokens'),
+          el('th', { style: 'text-align: right;' }, 'Output Tokens'),
+          el('th', { style: 'text-align: right;' }, 'This Run (USD)'),
+          el('th', { style: 'text-align: right;' }, 'Cold Run (USD)')
         ))
       );
       const costTbody = el('tbody');
-      const phases = cost.phases || [];
       const coldOf = p => (p.cold_cost_usd !== undefined ? p.cold_cost_usd : p.cost_usd);
+
       for (const ph of phases) {
         costTbody.appendChild(el('tr', null,
-          el('td', { style: 'font-weight: 600;' }, ph.phase),
+          el('td', { style: 'font-weight: 700;' }, ph.phase),
           el('td', null, el('span', { className: 'badge badge-area' }, ph.provider || '—')),
           el('td', { className: 'mono', style: 'font-size: 0.82rem;' }, ph.models && ph.models.length > 0 ? ph.models.join(', ') : '—'),
           el('td', { style: 'text-align: right;' }, formatNum(ph.calls)),
@@ -812,28 +1916,46 @@
         ));
       }
 
-      const sum = key => phases.reduce((acc, p) => acc + (p[key] || 0), 0);
-      const usd = v => (v != null ? `$${Number(v).toFixed(6)}` : 'unpriced');
-      costTbody.appendChild(el('tr', { style: 'font-weight: 800; background: var(--bg-subtle); border-top: 2px solid var(--border);' },
-        el('td', { colSpan: 3 }, 'Total Auditing Cost'),
-        el('td', { style: 'text-align: right;' }, formatNum(sum('calls'))),
+      costTbody.appendChild(el('tr', { style: 'font-weight: 800; background: var(--bg-subtle); border-top: 2px solid var(--border-default);' },
+        el('td', { colSpan: 3 }, 'Total Auditing Expenditure'),
+        el('td', { style: 'text-align: right;' }, formatNum(totalCalls)),
         el('td', { style: 'text-align: right;' }, formatNum(sum('cached_calls'))),
-        el('td', { style: 'text-align: right;' }, formatNum(sum('input_tokens'))),
-        el('td', { style: 'text-align: right;' }, formatNum(sum('output_tokens'))),
-        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1.05rem;' }, usd(cost.total_usd)),
-        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1.05rem;' },
-          usd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd))
+        el('td', { style: 'text-align: right;' }, formatNum(totalInputTokens)),
+        el('td', { style: 'text-align: right;' }, formatNum(totalOutputTokens)),
+        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1rem;' }, formatUsd(cost.total_usd)),
+        el('td', { style: 'text-align: right; color: var(--primary); font-size: 1rem;' },
+          formatUsd(cost.cold_total_usd !== undefined ? cost.cold_total_usd : cost.total_usd)
+        )
       ));
       costTable.appendChild(costTbody);
       costTableWrap.appendChild(costTable);
-      costSec.appendChild(costTableWrap);
-      costSec.appendChild(el('p', { style: 'font-size: 0.85rem; color: var(--text-dim); margin-top: 0.5rem;' },
-        '"This run" is what was billed; answers reused from the local cache are free. "Cold run" prices every call as if nothing was cached — the cost of auditing a new site.'));
+      costBody.appendChild(costTableWrap);
 
+      costBody.appendChild(el('p', { style: 'font-size: 0.82rem; color: var(--text-dim); margin-top: 0.65rem;' },
+        '“This run” reflects billed usage; cached responses from deterministic local runs incur zero cost. “Cold run” reflects the expenditure of running all model prompts fresh without cache.'
+      ));
       if (cost.note) {
-        costSec.appendChild(el('p', { style: 'font-size: 0.85rem; color: var(--text-dim); margin-top: 0.5rem; font-style: italic;' }, `* Note: ${cost.note}`));
+        costBody.appendChild(el('p', { style: 'font-size: 0.82rem; color: var(--text-dim); margin-top: 0.35rem; font-style: italic;' }, `* Note: ${cost.note}`));
       }
+      costSec.appendChild(costBody);
       mainEl.appendChild(costSec);
+
+      // Deep linking via URL hash
+      function handleHash() {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return;
+        if (hash.startsWith('probe-')) {
+          jumpToProbe(hash.slice(6));
+        } else if (hash.startsWith('req-')) {
+          jumpToReq(hash.slice(4));
+        } else {
+          const isReq = requirements.some(r => r.id === hash);
+          if (isReq) jumpToReq(hash);
+          else if (probes[hash]) jumpToProbe(hash);
+        }
+      }
+      window.addEventListener('hashchange', handleHash);
+      setTimeout(handleHash, 150);
     })();
   </script>
 </body>
