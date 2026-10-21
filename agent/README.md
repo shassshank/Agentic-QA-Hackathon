@@ -16,6 +16,12 @@ uv run qa-agent run --prd ../test-website/PRD.md --url https://<target>
 Open `runs/<timestamp>/report.html`. An exported report from a full run is in
 [`reports/local-2026-10-21/`](reports/local-2026-10-21/).
 
+| | Live link |
+|---|---|
+| **Walkthrough video** (3:28) | https://shassshank.github.io/Agentic-QA-Hackathon/agent/video.html |
+| **Audit report** (interactive) | https://shassshank.github.io/Agentic-QA-Hackathon/agent/reports/local-2026-10-21/report.html |
+| **Cost breakdown** | [`reports/local-2026-10-21/COST_BREAKDOWN.md`](reports/local-2026-10-21/COST_BREAKDOWN.md) |
+
 ---
 
 ## Contents

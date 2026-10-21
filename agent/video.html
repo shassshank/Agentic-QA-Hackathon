@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DemoBank QA Agent: Walkthrough</title>
+  <meta name="description" content="3-minute walkthrough of an autonomous, specification-driven QA agent testing the DemoBank web app.">
+  <style>
+    :root {
+      --bg-page: #e6eaef; --bg-section: #f5f7fa; --bg-card: #ffffff;
+      --border: #dde3ea; --text: #0f172a; --muted: #475569; --primary: #2563eb; --primary-hover: #1d4ed8;
+      --pass: #059669; --fail: #dc2626; --unverified: #d97706;
+      --shadow-section: 0 1px 3px rgba(15, 23, 42, 0.07), 0 10px 24px -8px rgba(15, 23, 42, 0.14);
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.08);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-page); color: var(--text); font-family: var(--font); line-height: 1.55; padding: 2rem 1rem; }
+    main { max-width: 1040px; margin: 0 auto; }
+    .card { background: var(--bg-section); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-section); padding: 1.75rem; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.6rem; letter-spacing: -0.02em; }
+    h2 { font-size: 1.1rem; }
+    .sub { color: var(--muted); margin-top: 0.35rem; }
+    .player { background: #000; border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); margin-top: 1.25rem; }
+    video { display: block; width: 100%; height: auto; aspect-ratio: 1660 / 1080; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; }
+    .stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-sm); padding: 0.85rem 1rem; }
+    .stat b { display: block; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .stat span { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+    .pass b { color: var(--pass); } .fail b { color: var(--fail); } .unv b { color: var(--unverified); }
+    .links { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.65rem 1.1rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; text-decoration: none; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+    .btn:hover { border-color: #cbd5e1; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.4); outline-offset: 2px; }
+    ul { margin: 0.75rem 0 0 1.2rem; color: var(--muted); }
+    li { margin: 0.25rem 0; }
+    footer { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 0.5rem; }
+    @media (max-width: 600px) { body { padding: 1rem 0.75rem; } .card { padding: 1.1rem; } h1 { font-size: 1.3rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>DemoBank QA Agent: Walkthrough</h1>
+      <p class="sub">An autonomous, specification-driven QA agent: it reads the PRD, drives the app in a real browser through
+        normal, negative and edge-case scenarios, verifies side effects, and reports every requirement as passed, failed or
+        unverified, with evidence and cost.</p>
+
+      <div class="player">
+        <video controls preload="metadata" playsinline>
+          <source src="Demo_QA.mp4" type="video/mp4">
+          Your browser cannot play this video. <a href="Demo_QA.mp4">Download the walkthrough (MP4)</a>.
+        </video>
+      </div>
+
+      <div class="stats" aria-label="Results of the reference run">
+        <div class="stat pass"><b>47</b><span>Passed</span></div>
+        <div class="stat fail"><b>4</b><span>Failed (real defects)</span></div>
+        <div class="stat unv"><b>3</b><span>Unverified</span></div>
+        <div class="stat"><b>41/41</b><span>Scenarios run</span></div>
+        <div class="stat"><b>≈ $0.17</b><span>Cold-run cost</span></div>
+      </div>
+
+      <div class="links">
+        <a class="btn btn-primary" href="reports/local-2026-10-21/report.html">Open the audit report</a>
+        <a class="btn" href="https://github.com/shassshank/Agentic-QA-Hackathon/blob/main/agent/reports/local-2026-10-21/COST_BREAKDOWN.md">Cost breakdown</a>
+        <a class="btn" href="https://github.com/shassshank/Agentic-QA-Hackathon/tree/main/agent">Source and architecture</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Defects the agent found</h2>
+      <ul>
+        <li>Zero and negative transfer amounts are accepted (HTTP 201, a new transaction, "Transfer complete").</li>
+        <li>A transfer larger than the available balance is accepted and leaves the account negative.</li>
+        <li>The history date-range filter leaves out transactions on the end date.</li>
+      </ul>
+    </section>
+
+    <footer>Synthetic demo data only. Run 867ec2, 2026-10-21.</footer>
+  </main>
+</body>
+</html>

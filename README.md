@@ -3,6 +3,9 @@
 > **QA agent submission:** the autonomous QA agent lives in [`agent/`](agent/). Start with
 > [`agent/README.md`](agent/README.md) for architecture, setup and results; the exported audit report is in
 > [`agent/reports/`](agent/reports/).
+>
+> - Walkthrough video: https://shassshank.github.io/Agentic-QA-Hackathon/agent/video.html
+> - Audit report: https://shassshank.github.io/Agentic-QA-Hackathon/agent/reports/local-2026-10-21/report.html
 
 This repository contains the sample web application participants will test and a separate workspace for their QA agents. The target is a fictional banking dashboard with synthetic data only; it does not connect to real banks, payment networks, or financial accounts.
 
