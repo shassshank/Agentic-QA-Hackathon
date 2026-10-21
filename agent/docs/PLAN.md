@@ -258,3 +258,9 @@ Jev is used during development for small routing and triage judgments (noted in 
   plus `report.md` and `report.json`. Steps are translated from locator patterns to plain words
   (`report/steps.py`); screenshots are downscaled JPEG (~6 MB for 49). Template designed by agy, reviewed and
   rendered headless at 1280 and 390 px with no errors or network requests. `verdict` and `run` save `cost.json`.
+- P9 done (2026-10-21): dev-only evaluation harness (eval/harness.py, score.py, variants.json): shipped, fixed and
+  seven single-defect mutants served as patched copies. Jev-only results: precision 0.97, recall 0.73, 0 false
+  fails on the fixed build, mutant detection 3/7, 1 false pass (GEN-007) and 1 false fail (ACC-002). The probes and
+  oracles catch every injected defect; all misses are Jev-only links in the 0.45-0.79 band, which escalate to Gemini
+  by design. Details in docs/P9_IMPLEMENTATION.md. Review (codex, 8 findings) fixed in 03a8915.
+  - Open: escalated (Gemini) eval run; jev-1.14.0 comparison (harness run --jev-models).

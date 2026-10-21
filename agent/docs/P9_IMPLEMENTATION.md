@@ -79,3 +79,40 @@ uv run python eval/harness.py score --variants shipped fixed
 `run` resets the shared database before preparation and always stops its servers
 in a finally block. The baseline app may remain on 8000/5173. Outputs live under
 `runs/eval/`, including process logs, manifests, run artifacts and metrics.
+
+## Live results (2026-10-21, Jev only, after the review fixes)
+
+All nine variants ran end to end (patched copies on ports 8100/5273, shared DB reset before each, Gemini disabled
+so nothing escalates). Catalogue: runs/requirements.json (67 requirements).
+
+| Variant | TP | False fail | False pass | Honest unverified | Precision | Recall | Own defect detected |
+|---|---:|---:|---:|---:|---:|---:|---|
+| shipped | 4 | 0 | 0 | 1 | 1.00 | 0.80 | yes (TRF-008/009/015, HIS-008; HIS-010 unverified) |
+| fixed | 0 | 0 | 0 | 0 | — | — | — (0 failures once the defects are fixed) |
+| m-logout | 6 | 0 | 0 | 1 | 1.00 | 0.86 | yes (SES-005, SES-007) |
+| m-typefilter | 5 | 0 | 0 | 1 | 1.00 | 0.83 | yes (HIS-006) |
+| m-sameacct | 5 | 0 | 0 | 1 | 1.00 | 0.83 | yes (TRF-005) |
+| m-email | 4 | 0 | 0 | 2 | 1.00 | 0.67 | no — PRO-001 unlinked (unverified) |
+| m-decimals | 4 | 0 | 0 | 2 | 1.00 | 0.67 | no — ACC-005 unlinked (unverified) |
+| m-mask | 4 | 1 | 0 | 3 | 0.80 | 0.57 | no — caught by accounts.masking.page_digits but blamed on ACC-002 |
+| m-dupsubmit | 4 | 0 | 1 | 1 | 1.00 | 0.67 | no — duplicate_submit checks failed, GEN-007 linked only to loading_state |
+
+Overall (micro): precision 0.97, recall 0.73, mutant detection 3/7. Cost per variant (Jev) is a few tenths of a
+cent; runtime about 5 minutes per variant.
+
+What the numbers say:
+- The oracles and probes catch every injected defect: each mutant produced at least one failing check that names
+  it. Every miss is in linking a requirement to those checks without Gemini (Jev link probability in the 0.45-0.79
+  band: duplicate_submit 0.45 for GEN-007, accounts.masking 0.53/0.68 for ACC-003/006, profile 0.70 for PRO-001).
+  That band escalates to Gemini by design; these figures are the Jev-only floor.
+- One false pass (GEN-007) and one false fail (ACC-002, masking defect blamed on the account-fields family). Both
+  come from family-level Jev links. Thresholds were not retuned on these variants to avoid fitting the test set.
+- Ground-truth corrections, made before scoring and recorded in variants.json: the first logout mutant only skipped
+  server-side revocation, which a browser cannot observe because the cookie is still deleted (the agent was right to
+  pass); the mutant now also keeps the cookie. m-decimals lists TRF-013/017/020 as allowed knock-on failures (a
+  0.01 transfer shows no visible balance change without cents).
+
+Bugs found by these runs and fixed: the double-submit probe fed transfer atomicity, record and success-timing
+checks (three applied transfers failed TRF-013/017/020 instead of only the duplicate-submit family); harness stop
+and port checks on macOS. Next: the same runs with Gemini escalation once its quota allows, to measure the
+escalated recall.
