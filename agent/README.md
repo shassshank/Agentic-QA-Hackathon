@@ -190,8 +190,9 @@ Why it is cheap:
 
 Every report shows two figures: what the run was billed, and what it would cost with an empty cache. Prices
 live in `qa_agent/llm/meter.py` (paid-tier list prices, checked 2026-10-21; `gemini-3.8-flash` doubles from
-2027-01-01). A model without a listed price, or a cached answer whose token usage was not recorded, is
-flagged and the total marked as a lower bound.
+2027-01-01). The Flash fallback models (`gemini-3.7-flash`, `gemini-3.5-flash`, `gemini-flash-latest`) are not
+on Google's price page and are priced like `gemini-3.8-flash` as an estimate. A model without any price, or a
+cached answer whose token usage was not recorded, is flagged and the total marked as a lower bound.
 
 ## Setup
 

@@ -13,10 +13,14 @@ from ..models import CostEntry
 PriceTable = dict[str, tuple[float, float]]
 
 # Paid-tier list prices, checked 2026-10-21 (ai.google.dev/gemini-api/docs/pricing; TypeSafe console).
-# gemini-3.8-flash doubles to (1.50, 7.50) from 2027-01-01. gemini-3.7-flash and gemini-3.5-flash are
-# not on the price page, so a run that falls back to them reports an unpriced lower bound.
+# gemini-3.8-flash doubles to (1.50, 7.50) from 2027-01-01. The Flash fallback models are not on the price
+# page; they are priced like gemini-3.8-flash, an assumed estimate so a fallback run still has a full total.
+FLASH_PRICE = (0.75, 3.75)
 DEFAULT_PRICES: PriceTable = {
-    "gemini-3.8-flash": (0.75, 3.75),
+    "gemini-3.8-flash": FLASH_PRICE,
+    "gemini-3.7-flash": FLASH_PRICE,     # assumed: not listed
+    "gemini-3.5-flash": FLASH_PRICE,     # assumed: not listed
+    "gemini-flash-latest": FLASH_PRICE,  # assumed: not listed
     "gemini-3.5-flash-lite": (0.30, 2.50),
     "gemini-3.1-pro-preview": (2.00, 12.00),
     "jev-1.13.0": (0.042, 0.0),
