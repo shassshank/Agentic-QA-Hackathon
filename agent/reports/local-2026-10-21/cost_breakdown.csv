@@ -1,0 +1,9 @@
+phase,provider,models,live_calls,cached_calls,input_tokens,output_tokens,thinking_tokens,billed_usd,cold_usd,calls_without_recorded_usage
+interpret,gemini,gemini-3.8-flash,0,1,2677,12966,1159,0.0,0.054976,0
+interpret-repair,gemini,gemini-3.8-flash,0,1,15715,13517,1439,0.0,0.067871,0
+link,typesafe,jev-1.13.0,123,248,574826,65886,0,0.016608,0.024143,0
+link_escalation,gemini,gemini-3.5-flash,1,0,12688,2550,0,0.019079,0.019079,0
+judge,typesafe,jev-1.13.0,56,63,60098,2609,0,0.0012,0.002524,0
+judge_escalation,gemini,gemini-3.5-flash-lite,0,2,0,0,0,0.0,0.0,2
+review,typesafe,jev-1.13.0,4,1,8456,272,0,0.000267,0.000355,0
+TOTAL,,,,,,,,0.037153,0.168948,
