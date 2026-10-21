@@ -6,7 +6,10 @@
   <title>DemoBank QA Audit Report</title>
   <style>
     :root {
-      --bg-page: #f8fafc;
+      /* Surfaces get lighter with each level so nested elements stand apart:
+         page (light gray) < section < panel (white); content inside a panel uses --bg-subtle. */
+      --bg-page: #e6eaef;
+      --bg-section: #f5f7fa;
       --bg-card: #ffffff;
       --bg-subtle: #f1f5f9;
       --bg-hover: #e2e8f0;
@@ -78,7 +81,7 @@
 
     /* Cards & Layout */
     .section-card {
-      background: var(--bg-card);
+      background: var(--bg-section);
       border: 1px solid var(--border-default);
       border-radius: var(--radius-md);
       padding: 1.5rem;
@@ -108,7 +111,7 @@
 
     /* Report Header */
     .report-header {
-      background: var(--bg-card);
+      background: var(--bg-section);
       border: 1px solid var(--border-default);
       border-radius: var(--radius-md);
       padding: 1.5rem;
@@ -219,7 +222,7 @@
     .bar-stack {
       height: 12px;
       width: 100%;
-      background: var(--bg-subtle);
+      background: var(--border-default);
       border-radius: var(--radius-full);
       overflow: hidden;
       display: flex;
@@ -249,7 +252,7 @@
       gap: 0.75rem;
       margin-bottom: 1.5rem;
       padding: 0.85rem 1rem;
-      background: var(--bg-subtle);
+      background: var(--bg-card);
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-default);
     }
@@ -404,7 +407,7 @@
       align-items: center;
       margin-bottom: 1.25rem;
       padding: 0.85rem;
-      background: var(--bg-subtle);
+      background: var(--bg-card);
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-default);
     }
