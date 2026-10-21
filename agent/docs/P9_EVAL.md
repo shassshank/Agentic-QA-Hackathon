@@ -17,7 +17,7 @@ Ground truth is dev-only and must never be read by the agent at runtime.
 
 ```json
 {
-  "catalogue_sha": "<prd_sha256 of runs/requirements.json>",
+  "catalogue_sha": "<prd_sha256 of eval/catalogue.json>", "catalogue_file_sha256": "<sha256 of eval/catalogue.json>",
   "variants": [
     {"name": "shipped", "description": "unmodified build", "patches": [],
      "must_fail": ["TRF-008", "TRF-009", "TRF-015", "HIS-008", "HIS-010"],
@@ -64,7 +64,7 @@ Every variant (including shipped) also gets the harness patch that adds its fron
   `runs/eval/<variant>/pids.json`. `stop <variant>` terminates them (process group). Ports configurable.
 - `reset-db` — `make -C test-website/database reset`.
 - `run <variant> [--jev-models m1,m2]` — reset-db, prepare, serve, then `qa-agent probe --url http://localhost:5273
-  --out runs/eval/<variant>/run`, `verify`, `verdict --catalogue runs/requirements.json`, `report`; always stop the
+  --out runs/eval/<variant>/run`, `verify`, `verdict --catalogue eval/catalogue.json`, `report`; always stop the
   servers (finally). With `--jev-models`, after the first verdict copy `checks.json`, `observations.json` and
   `evidence/` into `run-<model>` and rerun `verdict` with `TYPESAFE_MODEL=<model>` while the servers are still up
   (confirmation re-runs need them).

@@ -68,6 +68,10 @@ class GeminiClient:
     def model_for(self, tier: Tier) -> str:
         return self._models[tier]
 
+    def record_cache_hit(self, phase: str, tier: Tier) -> None:
+        """A decision reused from a per-item cache (batched calls have no per-item usage to replay)."""
+        self._meter.record(CostEntry(phase=phase, model=self._models[tier], cache_hit=True, usage_known=False))
+
     def _chain(self, tier: Tier) -> list[str]:
         primary = self._models[tier]
         return [primary, *[m for m in self._fallbacks if m != primary]]
@@ -82,22 +86,31 @@ class GeminiClient:
         schema: type[BaseModel] | None = None,
         thinking: Thinking | None = None,
     ) -> LLMResponse:
-        config = types.GenerateContentConfig(
-            system_instruction=system,
-            temperature=0,
-            response_mime_type="application/json" if schema else None,
-            response_schema=schema,
-            thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVELS[thinking]) if thinking else None,
-        )
+        def config(with_thinking: bool) -> types.GenerateContentConfig:
+            return types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=0,
+                response_mime_type="application/json" if schema else None,
+                response_schema=schema,
+                thinking_config=(types.ThinkingConfig(thinking_level=THINKING_LEVELS[thinking])
+                                 if thinking and with_thinking else None),
+            )
+
         failures: list[str] = []
         for model in self._chain(tier):
-            for attempt in range(self._attempts):
+            with_thinking = True  # a fallback model may not support the requested level; drop it once per model
+            attempt = 0
+            while attempt < self._attempts:
                 started = time.monotonic()
                 try:
                     response = self._clients[tier].models.generate_content(
-                        model=model, contents=prompt, config=config
+                        model=model, contents=prompt, config=config(with_thinking)
                     )
                 except errors.APIError as exc:
+                    if exc.code == 400 and thinking and with_thinking and "thinking" in str(exc).lower():
+                        failures.append(f"{model}: thinking level {thinking} unsupported, retried without it")
+                        with_thinking = False
+                        continue
                     if exc.code == 404:
                         # Listed models can still be retired for this key; move on to the next one.
                         failures.append(f"{model}: HTTP 404 (model unavailable)")
@@ -116,7 +129,8 @@ class GeminiClient:
                     wait = self._backoff * (2**attempt)
                 else:
                     return self._finish(response, model, phase, schema, started)
-                if attempt + 1 < self._attempts:
+                attempt += 1
+                if attempt < self._attempts:
                     self._sleep(wait)
         raise LLMUnavailable("; ".join(failures))
 

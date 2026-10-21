@@ -40,9 +40,7 @@ def evaluate(b: Builder) -> None:
             ok = s.get('path') == s.get('requested') and bool(s.get('header_customer')) and content(s)
             behaviour = 'session.refresh_keeps'
         else:
-            ok = protected(s) is False and (s.get('landing_enter_visible') or bool(
-                re.search(r'access required|enter.*demo|sign in|log in|unauthori', text(
-                    s.get('alerts', []) + s.get('statuses', [])), re.I)))
+            ok = protected(s) is False and access_denied(s)
             behaviour = 'session.protected_without_session' if pid == 'ses.no_session' else 'session.protected_after_logout'
         b.add(behaviour, str(i), ok, 'requested content retained' if 'refresh_keeps' in behaviour
               else 'no protected content and landing/access message', s)
@@ -50,5 +48,13 @@ def evaluate(b: Builder) -> None:
         if name in f:
             s = f[name]
             p = protected(s)
-            b.add('session.refresh_after_logout', name, None if p is None else not p,
-                  'no protected content', s)
+            # Visible protected content is a failure even mid-load; a pass needs a settled, terminal denied state,
+            # so a page still loading (which might reveal content later) stays unknown.
+            ok = (False if p is True else
+                  True if p is False and s.get('settled') is not False and access_denied(s) else None)
+            b.add('session.refresh_after_logout', name, ok, 'no protected content and landing/access message', s)
+
+
+def access_denied(s: dict) -> bool:
+    return bool(s.get('landing_enter_visible') or re.search(
+        r'access required|enter.*demo|sign in|log in|unauthori', text(s.get('alerts', []) + s.get('statuses', [])), re.I))

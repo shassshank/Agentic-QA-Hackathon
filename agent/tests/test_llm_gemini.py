@@ -54,6 +54,28 @@ def test_overloaded_then_retired_then_served():
     assert [(e.phase, e.model, e.thinking_tokens) for e in meter.entries] == [("test", "backup", 5)]
 
 
+def test_fallback_without_thinking_support_is_retried_without_it():
+    configs = []
+    client, models, _ = _client(
+        {"fast": [errors.ServerError(503, {})] * 2,
+         "older": [errors.ClientError(400, {"error": {"message": "Thinking level MINIMAL is not supported"}}),
+                   _ok("served")]},
+        fallbacks=["older"],
+    )
+    original = models.generate_content
+    def spy(*, model, contents, config):
+        configs.append((model, config.thinking_config))
+        return original(model=model, contents=contents, config=config)
+    models.generate_content = spy
+    response = client.generate("hi", phase="review", tier="fast", thinking="minimal")
+    assert response.model == "older"
+    assert [c[1] is None for c in configs] == [False, False, False, True]  # dropped only after the 400
+    other = errors.ClientError(400, {"error": {"message": "bad schema"}})
+    client, _, _ = _client({"primary": [other]}, fallbacks=[])
+    with pytest.raises(errors.ClientError):  # unrelated 400s still surface
+        client.generate("hi", phase="review", tier="planner", thinking="minimal")
+
+
 def test_all_models_failing_raises_with_reasons():
     client, _, _ = _client(
         {"primary": [errors.ServerError(503, {})] * 2, "backup": [errors.ServerError(429, {})] * 2},

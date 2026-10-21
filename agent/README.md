@@ -68,8 +68,10 @@ The browser harness never relies on fixed sleeps or brittle selectors:
 - **Locators:** test id first, then role + accessible name, labels, table headers. When a control is
   missing, `recover/heal.py` snapshots interactive elements and matches by role and token overlap with a
   generic synonym table (from↔source, memo↔note, log out↔sign out…); a Jev choice is the fallback.
-- **Recovery policies** (`recover/policy.py`): re-enter the demo if the session drops, press retry once on
-  a transient error, retry detached elements — but never repeat a mutation and never mask an access test.
+- **Recovery policies** (`recover/policy.py`): press the app's retry control once when a read fails with a
+  server error, and retry a step whose element was detached or still animating (at most twice). A submission is
+  never repeated, and recovery is off for session and error-handling probes. Losing the session mid-probe is
+  deliberately not recovered: it may be the defect being tested, so the probe is blocked instead.
 - **Chaos testing** (`chaos/`, injected into the agent's own browser only): relabelled controls, stripped
   test ids, 800 ms latency and one 503 per API path. The verdicts must not flip relative to the baseline;
   steps that cannot be healed become `blocked` → `unverified`.

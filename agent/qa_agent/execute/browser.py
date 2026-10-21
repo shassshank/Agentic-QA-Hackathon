@@ -144,10 +144,13 @@ class ScenarioRun:
         self.recorder.step(self.page, "goto", target=path, ok=True, shot=shot,
                            detail=None if settled else "page did not settle within timeout")
 
-    def reload(self, *, shot: bool = False) -> None:
+    def reload(self, *, shot: bool = False) -> bool:
+        """Returns whether the page settled; a page still loading must not be read as a final state."""
         self.page.reload(wait_until="domcontentloaded", timeout=self.timeout_ms)
-        self.settle()
-        self.recorder.step(self.page, "reload", ok=True, shot=shot)
+        settled = self.settle()
+        self.recorder.step(self.page, "reload", ok=True, shot=shot,
+                           detail=None if settled else "page did not settle within timeout")
+        return settled
 
     def path(self) -> str:
         return re.sub(r"^https?://[^/]+", "", self.page.url) or "/"

@@ -1,0 +1,1848 @@
+{
+  "prd_sha256": "d91445546c22226654997d2302e2aba5b4d001d2bd246997c2df723f36aa5a33",
+  "model": "gemini-3.8-flash",
+  "prompt_version": "interpret-v3",
+  "generated_at": "2026-10-20T16:04:42.562045Z",
+  "bullets": [
+    {
+      "id": "B01",
+      "section": "Purpose",
+      "line": 5,
+      "text": "DemoBank is a small fictional banking dashboard used as the target application for an agentic QA hackathon. A user should be able to enter a demo session, inspect their accounts and transaction history, transfer funds between their own accounts, and view basic profile information. All records are synthetic. The application must never initiate real payments or connect to an external bank."
+    },
+    {
+      "id": "B02",
+      "section": "Purpose",
+      "line": 7,
+      "text": "This document is the behavioral contract for the target. Implementations may have defects; agents should compare observed behavior with these requirements and report evidence rather than assuming a workflow succeeded."
+    },
+    {
+      "id": "B03",
+      "section": "Users and access",
+      "line": 11,
+      "text": "The target has one seeded demo customer."
+    },
+    {
+      "id": "B04",
+      "section": "Users and access",
+      "line": 12,
+      "text": "The landing page provides a clearly labeled Enter Demo action. It opens the demo dashboard without requiring a password or real identity information."
+    },
+    {
+      "id": "B05",
+      "section": "Users and access",
+      "line": 13,
+      "text": "The header identifies the active demo customer and provides a Log out action."
+    },
+    {
+      "id": "B06",
+      "section": "Users and access",
+      "line": 14,
+      "text": "Logging out returns the user to the landing page. Protected dashboard views should not remain usable after logout; direct navigation to them should return the user to the landing page or an access-required state."
+    },
+    {
+      "id": "B07",
+      "section": "Users and access",
+      "line": 15,
+      "text": "Refreshing while in a valid demo session should preserve that session. A logged-out user must not regain access merely by refreshing a protected page."
+    },
+    {
+      "id": "B08",
+      "section": "Dashboard and accounts",
+      "line": 19,
+      "text": "The dashboard shows the customer's checking and savings accounts."
+    },
+    {
+      "id": "B09",
+      "section": "Dashboard and accounts",
+      "line": 20,
+      "text": "Each account displays a readable account name, a masked account identifier, account type, and current available balance in USD."
+    },
+    {
+      "id": "B10",
+      "section": "Dashboard and accounts",
+      "line": 21,
+      "text": "Balances are displayed to two decimal places. The UI must not expose a full account identifier."
+    },
+    {
+      "id": "B11",
+      "section": "Dashboard and accounts",
+      "line": 22,
+      "text": "Selecting an account opens an account detail view with its current balance and related transaction history."
+    },
+    {
+      "id": "B12",
+      "section": "Dashboard and accounts",
+      "line": 23,
+      "text": "Account balances shown on the dashboard and detail view must agree with the latest successful transactions."
+    },
+    {
+      "id": "B13",
+      "section": "Transfers between owned accounts",
+      "line": 27,
+      "text": "The user can transfer funds between the checking and savings accounts owned by the demo customer."
+    },
+    {
+      "id": "B14",
+      "section": "Transfers between owned accounts",
+      "line": 28,
+      "text": "The transfer form includes source account, destination account, amount, and an optional memo."
+    },
+    {
+      "id": "B15",
+      "section": "Transfers between owned accounts",
+      "line": 29,
+      "text": "The source and destination must be different accounts. Same-account transfers must be rejected with a clear explanation and must not alter balances or create a transaction."
+    },
+    {
+      "id": "B16",
+      "section": "Transfers between owned accounts",
+      "line": 30,
+      "text": "Amount must be a positive number greater than zero, with no more than two digits after the decimal point. Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message. Rejected input must not create a transaction or change balances."
+    },
+    {
+      "id": "B17",
+      "section": "Transfers between owned accounts",
+      "line": 31,
+      "text": "The amount must not exceed the source account's available balance. If funds are insufficient, the transfer must be rejected, both balances must remain unchanged, and no completed transfer must appear in history."
+    },
+    {
+      "id": "B18",
+      "section": "Transfers between owned accounts",
+      "line": 32,
+      "text": "A valid transfer is atomic: the source balance decreases by the amount and the destination balance increases by the same amount. No partial transfer is allowed."
+    },
+    {
+      "id": "B19",
+      "section": "Transfers between owned accounts",
+      "line": 33,
+      "text": "A successful transfer creates one completed transfer record that can be found in both relevant account histories. The record shows the amount, date and time, source, destination, status, and memo if supplied."
+    },
+    {
+      "id": "B20",
+      "section": "Transfers between owned accounts",
+      "line": 34,
+      "text": "The UI reports success only after the transfer has been committed. If a transfer is rejected or fails, the UI must explain that it did not complete and must not show a success state."
+    },
+    {
+      "id": "B21",
+      "section": "Transfers between owned accounts",
+      "line": 35,
+      "text": "Refreshing after a successful transfer must preserve the updated balances and transaction record."
+    },
+    {
+      "id": "B22",
+      "section": "Transaction history",
+      "line": 39,
+      "text": "The user can view a combined transaction history and account-specific history."
+    },
+    {
+      "id": "B23",
+      "section": "Transaction history",
+      "line": 40,
+      "text": "Each row shows date and time, description or memo, transaction type, amount, status, and relevant account. Amount direction should be clear for deposits, withdrawals, and transfers."
+    },
+    {
+      "id": "B24",
+      "section": "Transaction history",
+      "line": 41,
+      "text": "The user can filter history by account, transaction type, status, and date range. When filters are applied, every displayed row must satisfy all selected filters."
+    },
+    {
+      "id": "B25",
+      "section": "Transaction history",
+      "line": 42,
+      "text": "The start and end dates are inclusive. A transaction occurring on either boundary date must be included when it matches the other filters."
+    },
+    {
+      "id": "B26",
+      "section": "Transaction history",
+      "line": 43,
+      "text": "An empty result set must show a clear empty state, not an error or unrelated transactions."
+    },
+    {
+      "id": "B27",
+      "section": "Transaction history",
+      "line": 44,
+      "text": "Clearing filters restores the unfiltered history."
+    },
+    {
+      "id": "B28",
+      "section": "Profile",
+      "line": 48,
+      "text": "A profile view displays only synthetic demo-customer details, such as display name and a masked email address."
+    },
+    {
+      "id": "B29",
+      "section": "Profile",
+      "line": 49,
+      "text": "The view must not reveal passwords, authentication tokens, full account identifiers, or data belonging to another user."
+    },
+    {
+      "id": "B30",
+      "section": "General interface behavior",
+      "line": 53,
+      "text": "The target works in a current desktop browser at a 1280 × 800 viewport and remains usable at narrower widths."
+    },
+    {
+      "id": "B31",
+      "section": "General interface behavior",
+      "line": 54,
+      "text": "Interactive controls have readable labels and communicate loading, success, validation, and failure states."
+    },
+    {
+      "id": "B32",
+      "section": "General interface behavior",
+      "line": 55,
+      "text": "A submitted action should not silently disappear. While waiting, the UI should show a loading state or otherwise prevent accidental duplicate submission."
+    },
+    {
+      "id": "B33",
+      "section": "General interface behavior",
+      "line": 56,
+      "text": "Navigation links and buttons lead to the labeled destination or perform the labeled action."
+    },
+    {
+      "id": "B34",
+      "section": "General interface behavior",
+      "line": 57,
+      "text": "A recoverable error must leave the user able to retry or return to the dashboard."
+    },
+    {
+      "id": "B35",
+      "section": "Seed data expectations",
+      "line": 61,
+      "text": "The demo begins with one customer, one checking account, one savings account, and enough historical transactions to exercise account, type, status, and date filters. Seed records should include multiple dates and at least one transfer between the two accounts. The demo has no signup, external payment, bill-pay, loan, card, or multi-user features."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "SES-001",
+      "area": "SES",
+      "title": "Enter Demo action accesses dashboard without credentials",
+      "statement": "Clicking the Enter Demo action on the landing page navigates the user to the demo dashboard without requiring a password or real identity information.",
+      "source_bullets": [
+        "B04"
+      ],
+      "source_quote": "The landing page provides a clearly labeled Enter Demo action. It opens the demo dashboard without requiring a password or real identity information.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Clicking the Enter Demo control opens the dashboard view without presenting password or identity input prompts.",
+          "oracle": "navigation"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Navigate to the landing page and click the Enter Demo button to access the dashboard."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-002",
+      "area": "SES",
+      "title": "Header identifies active demo customer",
+      "statement": "The header across the demo session displays the identity of the active demo customer.",
+      "source_bullets": [
+        "B05"
+      ],
+      "source_quote": "The header identifies the active demo customer and provides a Log out action.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Header contains non-empty text identifying the active demo customer name or identifier.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Inspect the header while logged in to verify the customer identity is shown."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-003",
+      "area": "SES",
+      "title": "Header provides Log out action",
+      "statement": "The header provides a distinct Log out action.",
+      "source_bullets": [
+        "B05"
+      ],
+      "source_quote": "The header identifies the active demo customer and provides a Log out action.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "A visible, clickable control for logging out is present in the header.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Locate the Log out control in the header during an active session."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-004",
+      "area": "SES",
+      "title": "Logging out redirects to landing page",
+      "statement": "Activating the Log out action redirects the user directly to the landing page.",
+      "source_bullets": [
+        "B06"
+      ],
+      "source_quote": "Logging out returns the user to the landing page.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "After clicking Log out, the browser displays the landing page containing the Enter Demo action.",
+          "oracle": "navigation"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Click Log out from the dashboard and verify redirection to the landing page."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-005",
+      "area": "SES",
+      "title": "Direct navigation to protected views fails after logout",
+      "statement": "Navigating directly to protected dashboard views after logging out returns the user to the landing page or an access-required state.",
+      "source_bullets": [
+        "B06"
+      ],
+      "source_quote": "Protected dashboard views should not remain usable after logout; direct navigation to them should return the user to the landing page or an access-required state.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Directly loading the dashboard URL while logged out redirects to the landing page or displays an access-required view.",
+          "oracle": "navigation"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Log out, then attempt to navigate directly to the dashboard or transfer URL."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-006",
+      "area": "SES",
+      "title": "Page refresh preserves active demo session",
+      "statement": "Refreshing the browser during an active demo session preserves the session and keeps protected views accessible.",
+      "source_bullets": [
+        "B07"
+      ],
+      "source_quote": "Refreshing while in a valid demo session should preserve that session.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Reloading the dashboard page during an active session leaves the dashboard view loaded and active without requiring re-entry.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Reload the browser while on the dashboard view during an active session."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SES-007",
+      "area": "SES",
+      "title": "Refreshing after logout does not regain access",
+      "statement": "Refreshing the browser on a protected URL after logging out does not restore the authenticated session or expose protected views.",
+      "source_bullets": [
+        "B07"
+      ],
+      "source_quote": "A logged-out user must not regain access merely by refreshing a protected page.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "After logout, refreshing the browser does not reveal protected dashboard content and remains on landing or access-required view.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Log out, attempt to view a protected URL, refresh the page, and verify protected content is not rendered."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-001",
+      "area": "ACC",
+      "title": "Dashboard displays checking and savings accounts",
+      "statement": "The dashboard displays both the customer's checking account and savings account.",
+      "source_bullets": [
+        "B08"
+      ],
+      "source_quote": "The dashboard shows the customer's checking and savings accounts.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Dashboard lists distinct entries for checking and savings accounts.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Open dashboard and verify that both a checking account and a savings account are present."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-002",
+      "area": "ACC",
+      "title": "Account entries display readable account name",
+      "statement": "Each account shown on the dashboard displays a readable account name.",
+      "source_bullets": [
+        "B09"
+      ],
+      "source_quote": "Each account displays a readable account name, a masked account identifier, account type, and current available balance in USD.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Each account card/row contains a readable name indicating the account.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Inspect checking and savings account cards on dashboard for account names."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-003",
+      "area": "ACC",
+      "title": "Account entries display masked account identifier",
+      "statement": "Each account shown on the dashboard displays a masked account identifier where not all digits of the identifier are visible.",
+      "source_bullets": [
+        "B09",
+        "B10"
+      ],
+      "source_quote": "Each account displays a readable account name, a masked account identifier, account type, and current available balance in USD.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Account identifier text partially conceals digits rather than showing the complete identifier.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Verify masked identifier format for each account on dashboard."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-004",
+      "area": "ACC",
+      "title": "Account entries display account type",
+      "statement": "Each account shown on the dashboard displays its account type.",
+      "source_bullets": [
+        "B09"
+      ],
+      "source_quote": "Each account displays a readable account name, a masked account identifier, account type, and current available balance in USD.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Account type label is displayed for each account.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Confirm account type indicator is present on each account card."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-005",
+      "area": "ACC",
+      "title": "Account entries display available balance in USD to two decimal places",
+      "statement": "Each account shown on the dashboard displays its current available balance in USD formatted to exactly two decimal places.",
+      "source_bullets": [
+        "B09",
+        "B10"
+      ],
+      "source_quote": "Balances are displayed to two decimal places.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Numeric balances for checking and savings contain exactly two digits after the decimal point and indicate USD currency.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Check balance formats on dashboard accounts to ensure two decimal places are present."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-006",
+      "area": "ACC",
+      "title": "Full account identifier is never exposed across the UI",
+      "statement": "Full, unmasked account identifiers are not exposed anywhere in the user interface.",
+      "source_bullets": [
+        "B10"
+      ],
+      "source_quote": "The UI must not expose a full account identifier.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "No visible text or HTML attribute in the entire UI contains a full, unmasked account number.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Inspect dashboard, transfer forms, profile, and history to ensure full account identifiers are absent."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-007",
+      "area": "ACC",
+      "title": "Selecting account opens account detail view with current balance",
+      "statement": "Selecting an account on the dashboard navigates to an account detail view displaying its current balance.",
+      "source_bullets": [
+        "B11"
+      ],
+      "source_quote": "Selecting an account opens an account detail view with its current balance and related transaction history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Clicking an account navigates to its detail view showing the corresponding current balance.",
+          "oracle": "navigation"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Select the checking account and verify navigation to its detail page with its current balance displayed."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-008",
+      "area": "ACC",
+      "title": "Account detail view displays related transaction history",
+      "statement": "The account detail view displays transaction history records related to that selected account.",
+      "source_bullets": [
+        "B11"
+      ],
+      "source_quote": "Selecting an account opens an account detail view with its current balance and related transaction history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Account detail view lists transaction records associated with the selected account.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Open savings account detail view and verify transaction rows related to savings are listed."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "ACC-009",
+      "area": "ACC",
+      "title": "Account balances agree with latest transactions across views",
+      "statement": "Account balances displayed on the dashboard and detail views agree with the net balance calculated from the initial seed and latest successful transactions.",
+      "source_bullets": [
+        "B12"
+      ],
+      "source_quote": "Account balances shown on the dashboard and detail view must agree with the latest successful transactions.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Balance on dashboard and balance on account detail view match each other and reflect all successful transfers.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Compare balance shown on the dashboard with the balance shown on the detail view after a transfer."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-001",
+      "area": "TRF",
+      "title": "Transfer between owned accounts available",
+      "statement": "The user can initiate transfers between checking and savings accounts owned by the demo customer.",
+      "source_bullets": [
+        "B13"
+      ],
+      "source_quote": "The user can transfer funds between the checking and savings accounts owned by the demo customer.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Transfer interface allows selecting checking and savings accounts as source and destination.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Navigate to the transfer interface and observe available accounts."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-002",
+      "area": "TRF",
+      "title": "Transfer form includes source, destination, amount, and optional memo",
+      "statement": "The transfer form contains input fields for source account, destination account, amount, and an optional memo.",
+      "source_bullets": [
+        "B14"
+      ],
+      "source_quote": "The transfer form includes source account, destination account, amount, and an optional memo.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Transfer form renders controls for source account, destination account, amount, and memo.",
+          "oracle": "layout"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Verify presence of source account selector, destination account selector, amount input, and memo input."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-003",
+      "area": "TRF",
+      "title": "Successful transfer with optional memo omitted",
+      "statement": "A transfer submitted without a memo succeeds and completes normally.",
+      "source_bullets": [
+        "B14",
+        "B18",
+        "B19"
+      ],
+      "source_quote": "The transfer form includes source account, destination account, amount, and an optional memo.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting valid transfer with memo left empty creates a completed transaction and updates balances.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Transfer 10.00 from checking to savings leaving memo field blank."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-004",
+      "area": "TRF",
+      "title": "Successful transfer with optional memo provided",
+      "statement": "A transfer submitted with a memo includes the memo text in the resulting transaction record.",
+      "source_bullets": [
+        "B14",
+        "B19"
+      ],
+      "source_quote": "The record shows the amount, date and time, source, destination, status, and memo if supplied.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Transaction record in history displays the memo string supplied during transfer.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Transfer 15.00 from savings to checking with memo 'Rent contribution' and check history record."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-005",
+      "area": "TRF",
+      "title": "Same-account transfer is rejected without balance or history changes",
+      "statement": "Selecting the same account for source and destination is rejected without altering balances or creating a transaction record.",
+      "source_bullets": [
+        "B15"
+      ],
+      "source_quote": "The source and destination must be different accounts. Same-account transfers must be rejected with a clear explanation and must not alter balances or create a transaction.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "When source and destination are identical, submission fails, balances remain untouched, and no new transaction row is added.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Select checking for both source and destination and attempt to submit transfer."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-006",
+      "area": "TRF",
+      "title": "Clear explanation shown for same-account transfer rejection",
+      "statement": "When a same-account transfer is attempted, the UI displays a clear explanation explaining that source and destination must differ.",
+      "source_bullets": [
+        "B15"
+      ],
+      "source_quote": "Same-account transfers must be rejected with a clear explanation and must not alter balances or create a transaction.",
+      "testability": "judgement",
+      "assertions": [
+        {
+          "description": "Validation message clearly states that source and destination accounts must be different.",
+          "oracle": "judge"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Attempt a same-account transfer and assess the readability and clarity of the error message."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-007",
+      "area": "TRF",
+      "title": "Blank transfer amount is rejected",
+      "statement": "Submitting a transfer with a blank amount field is rejected with a validation message and alters neither balances nor history.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message. Rejected input must not create a transaction or change balances.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting empty amount triggers validation, balances do not change, and no transaction is created.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Leave amount field blank and click submit."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-008",
+      "area": "TRF",
+      "title": "Zero transfer amount is rejected",
+      "statement": "Submitting a transfer with an amount of zero (0) is rejected with a validation message and alters neither balances nor history.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting amount of 0 triggers validation error without changing balances or creating transactions.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Enter 0.00 as transfer amount and submit."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-009",
+      "area": "TRF",
+      "title": "Negative transfer amount is rejected",
+      "statement": "Submitting a transfer with a negative amount is rejected with a validation message and alters neither balances nor history.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting a negative amount triggers validation error without changing balances or creating transactions.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Enter -25.00 as transfer amount and submit."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-010",
+      "area": "TRF",
+      "title": "Non-numeric transfer amount is rejected",
+      "statement": "Submitting a transfer with non-numeric amount text is rejected with a validation message and alters neither balances nor history.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Entering non-numeric characters in amount prevents successful submission without changing balances or creating transactions.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Enter 'abc' or 'ten' into amount input and attempt submission."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-011",
+      "area": "TRF",
+      "title": "Over-precision transfer amount is rejected",
+      "statement": "Submitting a transfer with more than two digits after the decimal point is rejected with a validation message and alters neither balances nor history.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Entering an amount with 3 or more decimal places triggers validation error without modifying balances or creating transactions.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Enter 10.123 as transfer amount and submit."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-012",
+      "area": "TRF",
+      "title": "Clear validation message shown for invalid amount input",
+      "statement": "When an invalid amount is entered, the UI presents a clear validation message explaining the requirement.",
+      "source_bullets": [
+        "B16"
+      ],
+      "source_quote": "Blank, zero, negative, non-numeric, and over-precision values must be rejected with a clear validation message.",
+      "testability": "judgement",
+      "assertions": [
+        {
+          "description": "Amount validation messages clearly convey why the input was rejected.",
+          "oracle": "judge"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Evaluate the readability and clarity of error messages when invalid amounts are submitted."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-013",
+      "area": "TRF",
+      "title": "Smallest valid transfer amount (0.01) is accepted",
+      "statement": "A transfer with the minimum positive amount of 0.01 is accepted and completes successfully.",
+      "source_bullets": [
+        "B16",
+        "B18"
+      ],
+      "source_quote": "Amount must be a positive number greater than zero, with no more than two digits after the decimal point.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting an amount of 0.01 decrements source by 0.01 and increments destination by 0.01.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Transfer 0.01 from checking to savings and verify balances update correctly."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-014",
+      "area": "TRF",
+      "title": "Typical valid transfer amount is accepted",
+      "statement": "A transfer with a typical valid positive amount (two decimal places, below balance) is accepted and completes successfully.",
+      "source_bullets": [
+        "B16",
+        "B18"
+      ],
+      "source_quote": "Amount must be a positive number greater than zero, with no more than two digits after the decimal point.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting a typical amount like 50.00 updates balances and creates transaction history record.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Transfer 50.00 between accounts and verify completion."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-015",
+      "area": "TRF",
+      "title": "Transfer amount exceeding available balance is rejected",
+      "statement": "If the transfer amount exceeds the source account's available balance, the transfer is rejected, both balances remain unchanged, and no completed transfer appears in history.",
+      "source_bullets": [
+        "B17"
+      ],
+      "source_quote": "The amount must not exceed the source account's available balance. If funds are insufficient, the transfer must be rejected, both balances must remain unchanged, and no completed transfer must appear in history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting amount greater than available balance results in rejection, unaltered balances, and no new completed transaction in history.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Attempt transfer of available balance + 0.01 and verify rejection."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-016",
+      "area": "TRF",
+      "title": "Transfer of exact available balance is accepted",
+      "statement": "A transfer with amount exactly equal to the source account's available balance is accepted and leaves the source balance at zero.",
+      "source_bullets": [
+        "B17",
+        "B18"
+      ],
+      "source_quote": "The amount must not exceed the source account's available balance.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submitting amount equal to source balance transfers all funds, reducing source to 0.00 and increasing destination by exact balance.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Transfer entire available balance of checking to savings."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-017",
+      "area": "TRF",
+      "title": "Transfer is atomic with equal source decrease and destination increase",
+      "statement": "A valid transfer updates both accounts atomically such that source balance decreases by the amount, destination balance increases by the exact same amount, and no partial transfer occurs.",
+      "source_bullets": [
+        "B18"
+      ],
+      "source_quote": "A valid transfer is atomic: the source balance decreases by the amount and the destination balance increases by the same amount. No partial transfer is allowed.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Source balance change plus destination balance change equals 0.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Execute a valid transfer of 25.50 and assert exact delta on both accounts."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-018",
+      "area": "TRF",
+      "title": "Successful transfer creates single record in both account histories",
+      "statement": "A successful transfer creates one completed transfer record visible in both the source and destination account histories.",
+      "source_bullets": [
+        "B19"
+      ],
+      "source_quote": "A successful transfer creates one completed transfer record that can be found in both relevant account histories.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "The transaction row corresponding to the transfer appears when viewing the source account history and destination account history.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Perform transfer and inspect both account detail history views for the resulting record."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-019",
+      "area": "TRF",
+      "title": "Transfer record shows amount, date and time, source, destination, and status",
+      "statement": "The completed transfer record displays the amount, date and time, source account, destination account, and status.",
+      "source_bullets": [
+        "B19"
+      ],
+      "source_quote": "The record shows the amount, date and time, source, destination, status, and memo if supplied.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Transfer row in history contains amount, timestamp, source, destination, and completed status.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Inspect the fields rendered in the newly created transfer row in transaction history."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-020",
+      "area": "TRF",
+      "title": "Success reported only after commit with balances and history updated",
+      "statement": "When the UI first reports success for a transfer, the balances and transaction history already reflect the committed transfer.",
+      "source_bullets": [
+        "B20"
+      ],
+      "source_quote": "The UI reports success only after the transfer has been committed.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "At the moment the success confirmation appears, checking/savings balances and history already show the post-transfer state.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Trigger a valid transfer and check balances immediately upon success confirmation display."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-021",
+      "area": "TRF",
+      "title": "Failed or rejected transfer shows failure explanation without success state",
+      "statement": "If a transfer fails or is rejected, the UI explains that it did not complete and does not display a success state.",
+      "source_bullets": [
+        "B20"
+      ],
+      "source_quote": "If a transfer is rejected or fails, the UI must explain that it did not complete and must not show a success state.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "On rejection, no success indicator or badge is rendered, and an explanation indicating the transfer did not complete is displayed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Submit an excessive transfer amount and ensure no success message appears while an explanation is shown."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "TRF-022",
+      "area": "TRF",
+      "title": "Refresh preserves post-transfer balances and history",
+      "statement": "Refreshing the browser after a successful transfer preserves the updated account balances and the new transaction record.",
+      "source_bullets": [
+        "B21"
+      ],
+      "source_quote": "Refreshing after a successful transfer must preserve the updated balances and transaction record.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "After a successful transfer, refreshing the page retains updated balances and displays the transaction in history.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Execute a transfer, refresh the browser, and confirm balances and history rows match post-transfer state."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-001",
+      "area": "HIS",
+      "title": "Combined transaction history view is available",
+      "statement": "The user can view a combined transaction history showing transactions across all accounts.",
+      "source_bullets": [
+        "B22"
+      ],
+      "source_quote": "The user can view a combined transaction history and account-specific history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "History view displays transactions from both checking and savings accounts together.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Navigate to the main transaction history page and verify records from all accounts are listed."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-002",
+      "area": "HIS",
+      "title": "Account-specific transaction history view is available",
+      "statement": "The user can view an account-specific transaction history for an individual account.",
+      "source_bullets": [
+        "B22"
+      ],
+      "source_quote": "The user can view a combined transaction history and account-specific history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Account-specific history contains only transactions relating to the selected account.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Open checking account history and verify only checking transactions appear."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-003",
+      "area": "HIS",
+      "title": "Transaction row displays required fields",
+      "statement": "Each transaction history row shows date and time, description or memo, transaction type, amount, status, and relevant account.",
+      "source_bullets": [
+        "B23"
+      ],
+      "source_quote": "Each row shows date and time, description or memo, transaction type, amount, status, and relevant account.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Each transaction row in the table/list contains non-empty date/time, description/memo, type, amount, status, and account.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Examine rows in transaction history and verify all required columns/fields are populated."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-004",
+      "area": "HIS",
+      "title": "Amount direction is clear for deposits, withdrawals, and transfers",
+      "statement": "The transaction amount clearly conveys direction (inflow vs. outflow) for deposits, withdrawals, and transfers.",
+      "source_bullets": [
+        "B23"
+      ],
+      "source_quote": "Amount direction should be clear for deposits, withdrawals, and transfers.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Transaction amounts use explicit sign (+/-), distinct coloring, or directional indicator distinguishing inflows from outflows.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Inspect deposits, withdrawals, and transfers in history to verify directional indicators."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-005",
+      "area": "HIS",
+      "title": "Filter history by account",
+      "statement": "Filtering transaction history by account displays every matching record from unfiltered history, displays no non-matching records, and produces a non-empty result when matching records exist.",
+      "source_bullets": [
+        "B24"
+      ],
+      "source_quote": "The user can filter history by account, transaction type, status, and date range. When filters are applied, every displayed row must satisfy all selected filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "All displayed rows belong to the selected account, and all records from unfiltered history matching that account are displayed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Apply filter for checking account and verify only checking rows appear."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-006",
+      "area": "HIS",
+      "title": "Filter history by transaction type",
+      "statement": "Filtering transaction history by transaction type displays every matching record from unfiltered history, displays no non-matching records, and produces a non-empty result when matching records exist.",
+      "source_bullets": [
+        "B24"
+      ],
+      "source_quote": "The user can filter history by account, transaction type, status, and date range. When filters are applied, every displayed row must satisfy all selected filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "All displayed rows have the selected transaction type, and all records from unfiltered history matching that type are displayed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Apply filter for 'transfer' type and verify all returned rows are transfers."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-007",
+      "area": "HIS",
+      "title": "Filter history by status",
+      "statement": "Filtering transaction history by status displays every matching record from unfiltered history, displays no non-matching records, and produces a non-empty result when matching records exist.",
+      "source_bullets": [
+        "B24"
+      ],
+      "source_quote": "The user can filter history by account, transaction type, status, and date range. When filters are applied, every displayed row must satisfy all selected filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "All displayed rows have the selected status, and all records from unfiltered history matching that status are displayed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Filter by 'completed' status and verify results."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-008",
+      "area": "HIS",
+      "title": "Filter history by date range",
+      "statement": "Filtering transaction history by date range displays every matching record from unfiltered history, displays no non-matching records, and produces a non-empty result when matching records exist.",
+      "source_bullets": [
+        "B24"
+      ],
+      "source_quote": "The user can filter history by account, transaction type, status, and date range. When filters are applied, every displayed row must satisfy all selected filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "All displayed rows have timestamps within the specified date range, and all records within that range are displayed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Apply a date range filter that encompasses known seed transactions."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-009",
+      "area": "HIS",
+      "title": "Combine multiple history filters",
+      "statement": "Applying a combination of account, type, status, and date range filters displays every record satisfying all selected filters and displays no records that fail any filter.",
+      "source_bullets": [
+        "B24"
+      ],
+      "source_quote": "When filters are applied, every displayed row must satisfy all selected filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Each displayed row matches account AND type AND status AND date range filters simultaneously.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Filter simultaneously by Checking account, Transfer type, and Completed status within a valid date range."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-010",
+      "area": "HIS",
+      "title": "Date range filter start and end dates are inclusive",
+      "statement": "Transactions occurring on the exact start date or exact end date of a date range filter are included in the filtered results when matching other filters.",
+      "source_bullets": [
+        "B25"
+      ],
+      "source_quote": "The start and end dates are inclusive. A transaction occurring on either boundary date must be included when it matches the other filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "A transaction with timestamp on the boundary start or end date is present in the filtered view.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Set start date or end date exactly equal to the calendar date of a known seed transaction and verify it appears."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-011",
+      "area": "HIS",
+      "title": "Clear empty state shown for empty filter results",
+      "statement": "When a filter combination matches zero transactions, the UI displays a clear empty state rather than an error or unrelated transactions.",
+      "source_bullets": [
+        "B26"
+      ],
+      "source_quote": "An empty result set must show a clear empty state, not an error or unrelated transactions.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "An empty state message is shown without error alerts, and zero transaction rows are listed.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Filter by a future date range where no transactions exist and verify the empty state display."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "HIS-012",
+      "area": "HIS",
+      "title": "Clearing filters restores unfiltered history",
+      "statement": "Activating the clear filters action removes active filter criteria and restores the full unfiltered transaction history.",
+      "source_bullets": [
+        "B27"
+      ],
+      "source_quote": "Clearing filters restores the unfiltered history.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Filter inputs are reset to defaults and all previous unfiltered transaction rows are redisplayed.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Apply a filter, click clear filters, and assert total row count matches pre-filtered history."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "PRO-001",
+      "area": "PRO",
+      "title": "Profile view displays synthetic display name and masked email address",
+      "statement": "The profile view displays synthetic demo-customer details including a display name and a masked email address.",
+      "source_bullets": [
+        "B28"
+      ],
+      "source_quote": "A profile view displays only synthetic demo-customer details, such as display name and a masked email address.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Profile page renders customer display name and an email address where parts of the address are obscured.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Navigate to the profile view and verify customer name and masked email are rendered."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "PRO-002",
+      "area": "PRO",
+      "title": "Profile view does not expose sensitive credentials, tokens, full account IDs, or other user data",
+      "statement": "The profile view does not display passwords, authentication tokens, full account identifiers, or data belonging to another user.",
+      "source_bullets": [
+        "B29"
+      ],
+      "source_quote": "The view must not reveal passwords, authentication tokens, full account identifiers, or data belonging to another user.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "No passwords, auth tokens, full account IDs, or foreign user data are present in profile text or DOM elements.",
+          "oracle": "invariant"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Inspect profile view DOM and visible text to verify absence of secrets and unmasked IDs."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-001",
+      "area": "GEN",
+      "title": "Application must never initiate real payments or connect to an external bank",
+      "statement": "The application must never initiate real external payment calls or connect to external bank network hosts across the entire interface.",
+      "source_bullets": [
+        "B01"
+      ],
+      "source_quote": "The application must never initiate real payments or connect to an external bank.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Browser network traffic does not connect to external banking endpoints or third-party payment gateways during any workflow.",
+          "oracle": "network"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Execute transfer and session workflows while monitoring outbound network requests for third-party payment endpoints."
+        }
+      ],
+      "ambiguity": "Network check can only verify client-side outbound requests; backend isolation is assumed synthetic."
+    },
+    {
+      "id": "GEN-002",
+      "area": "GEN",
+      "title": "Responsive layout at 1280x800 desktop viewport",
+      "statement": "The application renders cleanly without layout overlap or clipped interactive elements at a 1280x800 viewport.",
+      "source_bullets": [
+        "B30"
+      ],
+      "source_quote": "The target works in a current desktop browser at a 1280 × 800 viewport and remains usable at narrower widths.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Key controls, cards, and tables are fully visible and clickable without horizontal body scroll overflow at 1280x800.",
+          "oracle": "layout"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Resize viewport to 1280x800 and inspect dashboard and transfer views."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-003",
+      "area": "GEN",
+      "title": "Usable layout at narrower viewport widths",
+      "statement": "The application remains usable without broken controls or inaccessible content at viewport widths narrower than 1280px.",
+      "source_bullets": [
+        "B30"
+      ],
+      "source_quote": "The target works in a current desktop browser at a 1280 × 800 viewport and remains usable at narrower widths.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Interactive controls remain accessible and visible at narrower viewports such as 768px width.",
+          "oracle": "layout"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "edge",
+          "description": "Resize browser viewport to 768px width and check usability of transfer form and navigation."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-004",
+      "area": "GEN",
+      "title": "Interactive controls have readable labels",
+      "statement": "All interactive controls in the application have clear, readable text or accessible labels.",
+      "source_bullets": [
+        "B31"
+      ],
+      "source_quote": "Interactive controls have readable labels and communicate loading, success, validation, and failure states.",
+      "testability": "judgement",
+      "assertions": [
+        {
+          "description": "Buttons and links feature readable descriptive labels clearly communicating their action.",
+          "oracle": "judge"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Review buttons, links, and form inputs for readable labeling across dashboard and transfer pages."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-005",
+      "area": "GEN",
+      "title": "Controls communicate loading, success, validation, and failure states",
+      "statement": "The interface displays distinct observable states for loading, success, validation errors, and failure on user actions.",
+      "source_bullets": [
+        "B31"
+      ],
+      "source_quote": "Interactive controls have readable labels and communicate loading, success, validation, and failure states.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Visual indicators (e.g. spinners, success badges, error messages) render for loading, success, validation, and failure outcomes.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Trigger an action and observe loading indicator, followed by success state."
+        },
+        {
+          "kind": "negative",
+          "description": "Trigger an invalid action and observe validation/failure state."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-006",
+      "area": "GEN",
+      "title": "Loading state shown during pending submission",
+      "statement": "When a submission is in progress, the UI displays a visible loading indicator rather than leaving the user with an unacknowledged submission.",
+      "source_bullets": [
+        "B32"
+      ],
+      "source_quote": "A submitted action should not silently disappear. While waiting, the UI should show a loading state or otherwise prevent accidental duplicate submission.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "A loading indicator or disabled spinner is rendered while an action is awaiting server completion.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Submit a transfer form and observe loading indicators prior to completion."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-007",
+      "area": "GEN",
+      "title": "Duplicate submission prevention while waiting",
+      "statement": "While an action is being processed, the UI disables submission controls or otherwise prevents accidental duplicate submissions.",
+      "source_bullets": [
+        "B32"
+      ],
+      "source_quote": "While waiting, the UI should show a loading state or otherwise prevent accidental duplicate submission.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Submit button is disabled or ignores subsequent clicks until the pending request completes.",
+          "oracle": "state_diff"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Click submit button rapidly multiple times during transfer and verify only one request/transaction is processed."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-008",
+      "area": "GEN",
+      "title": "Navigation controls lead to labeled destinations",
+      "statement": "Navigation links and buttons lead to their labeled destination views or perform their labeled actions without dead-ends.",
+      "source_bullets": [
+        "B33"
+      ],
+      "source_quote": "Navigation links and buttons lead to the labeled destination or perform the labeled action.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Activating nav links (e.g. Dashboard, Accounts, History, Profile) successfully transitions to the respective views.",
+          "oracle": "navigation"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Click each navigation link in the application menu and verify the resulting destination matches the label."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "GEN-009",
+      "area": "GEN",
+      "title": "Recoverable error allows retry or return to dashboard",
+      "statement": "When a recoverable error occurs, the UI provides an action allowing the user to retry the operation or return to the dashboard.",
+      "source_bullets": [
+        "B34"
+      ],
+      "source_quote": "A recoverable error must leave the user able to retry or return to the dashboard.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Error displays render a retry control or navigation link leading back to the dashboard.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "negative",
+          "description": "Trigger a recoverable error condition and verify the presence and functionality of retry or return-to-dashboard controls."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-001",
+      "area": "SEED",
+      "title": "Demo seeds exactly one customer with checking and savings accounts",
+      "statement": "The initial seed data contains exactly one customer with one checking account and one savings account.",
+      "source_bullets": [
+        "B03",
+        "B35"
+      ],
+      "source_quote": "The demo begins with one customer, one checking account, one savings account, and enough historical transactions to exercise account, type, status, and date filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Only one checking account and one savings account are present for the single demo customer upon session start.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Start fresh demo session and count the accounts displayed."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-002",
+      "area": "SEED",
+      "title": "Seed history contains multiple distinct accounts",
+      "statement": "Seed transactions include records associated with both the checking account and the savings account to exercise account filters.",
+      "source_bullets": [
+        "B35"
+      ],
+      "source_quote": "enough historical transactions to exercise account, type, status, and date filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Unfiltered transaction history contains at least one record for checking and at least one record for savings.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Verify seed transactions contain rows for both accounts."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-003",
+      "area": "SEED",
+      "title": "Seed history contains multiple transaction types",
+      "statement": "Seed transactions include multiple distinct transaction types to exercise type filters.",
+      "source_bullets": [
+        "B35"
+      ],
+      "source_quote": "enough historical transactions to exercise account, type, status, and date filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Unfiltered transaction history exhibits two or more distinct transaction types.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Verify seed transactions contain multiple types such as deposit, withdrawal, or transfer."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-004",
+      "area": "SEED",
+      "title": "Seed history contains multiple transaction statuses",
+      "statement": "Seed transactions include records with different status values to exercise status filters.",
+      "source_bullets": [
+        "B35"
+      ],
+      "source_quote": "enough historical transactions to exercise account, type, status, and date filters.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Unfiltered transaction history contains records with distinct status values.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Inspect initial transaction history rows to verify more than one status exists."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-005",
+      "area": "SEED",
+      "title": "Seed history spans multiple dates",
+      "statement": "Seed transactions span multiple calendar dates to exercise date filters.",
+      "source_bullets": [
+        "B35"
+      ],
+      "source_quote": "Seed records should include multiple dates and at least one transfer between the two accounts.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Unfiltered transaction history contains transactions with timestamps on at least two distinct calendar dates.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Verify initial seed data has transactions occurring across multiple dates."
+        }
+      ],
+      "ambiguity": null
+    },
+    {
+      "id": "SEED-006",
+      "area": "SEED",
+      "title": "Seed history includes at least one transfer between accounts",
+      "statement": "Initial seed records include at least one transfer between the customer's checking and savings accounts.",
+      "source_bullets": [
+        "B35"
+      ],
+      "source_quote": "Seed records should include multiple dates and at least one transfer between the two accounts.",
+      "testability": "automated",
+      "assertions": [
+        {
+          "description": "Initial transaction history includes at least one record representing a transfer between checking and savings.",
+          "oracle": "ui_text"
+        }
+      ],
+      "scenario_hints": [
+        {
+          "kind": "normal",
+          "description": "Search initial seed transactions for a transfer record between checking and savings."
+        }
+      ],
+      "ambiguity": null
+    }
+  ],
+  "excluded": [
+    {
+      "bullet_id": "B02",
+      "reason": "Meta guidance describing purpose and defect reporting guidelines for QA agents rather than an observable software behavior."
+    }
+  ],
+  "warnings": []
+}

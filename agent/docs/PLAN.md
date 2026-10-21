@@ -272,3 +272,13 @@ Jev is used during development for small routing and triage judgments (noted in 
   - Note: `qa-agent run` re-interprets when the prompt or schema changed since the cached catalogue, so the
     catalogue can differ between runs (67 → 54 requirements here). Pin it for the hosted run by reusing the cache.
   - Open: hosted run once the URL arrives (copy the report into reports/), recording the video.
+- Review 2026-10-21 (own audit + codex, 10 findings): judged failures could never be confirmed (always "flaky");
+  eval ground truth used a gitignored catalogue guarded only by the PRD hash (now eval/catalogue.json, file hash);
+  logout-refresh passed while still loading; positive-path transfers ignored the source balance; an unstated
+  timezone was treated as UTC; zero history rows passed row checks; cost accounting dropped unknown usage,
+  erased known costs next to an unpriced call and priced provider-cached input as free; a Gemini fallback that
+  rejects the thinking level aborted escalated review; blocked vs non-reproduced re-runs were conflated. All fixed.
+  - Open judgement calls: HIS-003 (amount direction) fails on "No change: $0.00" rows left by the zero-amount
+    defect and accumulated across local runs (reset the DB before the exported run); wording judgements in the
+    uncertain band (e.g. TRF-007 blank-amount message) can flip between runs. No oracle yet for "no external
+    payment/bank requests" (GEN-007) or "no out-of-scope features" (SEED-007).

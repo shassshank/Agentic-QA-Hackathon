@@ -46,6 +46,8 @@ def aggregate(catalogue, links, checks, confirmations=None, *, llm_unavailable=F
             reason = 'flaky'
         elif any(c.status == 'fail' and (c.probe_id, c.id) not in confirmations for c in linked):
             reason = 'unconfirmed'  # failure seen once, never re-run (e.g. --no-confirm)
+        elif any(c.status == 'fail' and confirmations.get((c.probe_id, c.id)) == 'unconfirmed' for c in linked):
+            reason = 'unconfirmed'  # re-run completed but did not reproduce the observation that failed
         elif any(c.status == 'fail' for c in linked):
             reason = 'probe_blocked'  # re-run attempted but could not complete
         elif any(c.status == 'unknown' and 'concurrent' in (c.reason or '').lower() for c in linked):

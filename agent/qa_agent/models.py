@@ -106,3 +106,5 @@ class CostEntry(BaseModel):
     cached_tokens: int = 0
     latency_ms: int = 0
     cache_hit: bool = False
+    # False for cache hits whose original usage was never stored: their cold cost is unknown, not zero.
+    usage_known: bool = True

@@ -103,8 +103,12 @@ def _logout(run: ScenarioRun) -> None:
     run.settle()
 
 
-def _timezone(run: ScenarioRun, rows: list[dict]) -> tuple[str, str]:
-    """Timezone the UI says it uses for date filters (hint text), else the zone shown in row times."""
+def _timezone(run: ScenarioRun, rows: list[dict]) -> tuple[str, str, bool]:
+    """Timezone the UI says it uses for date filters (hint text), else the zone shown in row times.
+
+    The third value is True when nothing states a zone and UTC is only assumed; oracles then accept only
+    comparisons that hold in every plausible zone.
+    """
     hint = ""
     try:
         described = run.page.get_by_label(F_START).first.get_attribute("aria-describedby", timeout=2000) or ""
@@ -115,8 +119,8 @@ def _timezone(run: ScenarioRun, rows: list[dict]) -> tuple[str, str]:
     for source in (hint, " ".join(r.get("date_text") or "" for r in rows[:5])):
         for pattern, zone in TIMEZONES:
             if pattern.search(source):
-                return zone, source.strip()[:200]
-    return "UTC", "no timezone stated; assumed UTC"
+                return zone, source.strip()[:200], False
+    return "UTC", "no timezone stated; assumed UTC", True
 
 
 def _apply_filters(run: ScenarioRun, values: dict[re.Pattern[str], str], *, shot: bool = False) -> dict[str, Any]:
@@ -250,13 +254,13 @@ def ses_refresh_after_logout(ctx: ProbeContext) -> None:
         run.page.go_back(wait_until="domcontentloaded", timeout=run.timeout_ms)
     except PlaywrightError:
         pass
-    run.settle()
-    ctx.fact("after_back", _access_state(run))
-    run.reload()
-    ctx.fact("after_reload", _access_state(run))
+    settled = run.settle()
+    ctx.fact("after_back", {**_access_state(run), "settled": settled})
+    settled = run.reload()
+    ctx.fact("after_reload", {**_access_state(run), "settled": settled})
     run.goto(nav_path(run, "transactions"))
-    run.reload()
-    ctx.fact("after_direct_reload", _access_state(run))
+    settled = run.reload()
+    ctx.fact("after_direct_reload", {**_access_state(run), "settled": settled})
 
 
 # --- dashboard and accounts ----------------------------------------------------------------------
@@ -344,26 +348,39 @@ def trf_form(ctx: ProbeContext) -> None:
 def _transfer_case(ctx: ProbeContext, *, amount: str | None = None, amount_of: str | None = None,
                    delta: Decimal = Decimal("0"), memo_label: str | None = None, same_account: bool = False,
                    clicks: int = 1, latency_ms: int | None = None, verify_histories: bool = False,
-                   reload_after: bool = False) -> None:
+                   reload_after: bool = False, requires_funds: bool = False) -> None:
     """Snapshot → one transfer attempt → snapshot → (optional history/refresh checks) → restore.
 
     amount_of="source" derives the amount from the observed source balance (+ delta), e.g. exact
     balance or balance + 0.01, so boundaries follow whatever the live data is.
+
+    requires_funds marks a positive-path case: the transfer is only valid if the source can cover it, so the
+    probe uses a funded source or is blocked. Otherwise a correct rejection would read as a failed valid transfer.
     """
     run = ctx.run
     run.enter_demo()
     source, destination = accounts_pair(read_accounts(run.page))
+    if requires_funds and amount is not None:
+        needed = Decimal(amount)
+        if source.balance is None or source.balance < needed:
+            if destination.balance is not None and destination.balance >= needed:
+                source, destination = destination, source
+            else:
+                raise ProbeBlocked(f"no account has an observed balance of at least {amount} for a valid transfer")
     if same_account:
         destination = source
     if amount_of == "source":
         if source.balance is None:
             raise ProbeBlocked("source balance could not be read")
+        if requires_funds and source.balance <= 0:
+            raise ProbeBlocked("source balance is not positive; an exact-balance transfer would not be valid")
         amount = f"{source.balance + delta:.2f}"
     assert amount is not None
     memo = ctx.memo(memo_label) if memo_label else None
     ctx.fact("plan", {"source": source.name, "destination": destination.name, "source_key": account_key(source),
                       "destination_key": account_key(destination), "amount": amount, "memo": memo,
-                      "clicks": clicks, "latency_ms": latency_ms})
+                      "clicks": clicks, "latency_ms": latency_ms,
+                      "source_balance": None if source.balance is None else f"{source.balance:.2f}"})
     before = ctx.fact("before", snapshot(run, "before"))
     after: dict | None = None
     try:
@@ -403,25 +420,26 @@ def _transfer_case(ctx: ProbeContext, *, amount: str | None = None, amount_of: s
        behaviours=["transfer.valid", "transfer.atomic", "transfer.record", "transfer.success_after_commit",
                    "transfer.refresh_persists", "history.account_specific"], mutating=True)
 def trf_valid(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount="1.00", memo_label="valid", verify_histories=True, reload_after=True)
+    _transfer_case(ctx, amount="1.00", memo_label="valid", verify_histories=True, reload_after=True,
+                   requires_funds=True)
 
 
 @probe("trf.memo_optional", Area.TRF, N, "Valid transfer with the optional memo left empty",
        behaviours=["transfer.valid", "transfer.memo_optional", "transfer.record"], mutating=True)
 def trf_memo_optional(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount="2.00", verify_histories=True)
+    _transfer_case(ctx, amount="2.00", verify_histories=True, requires_funds=True)
 
 
 @probe("trf.min_amount", Area.TRF, EDGE, "Smallest valid amount (0.01)",
        behaviours=["transfer.valid", "transfer.amount_accept"], mutating=True)
 def trf_min_amount(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount="0.01", memo_label="min")
+    _transfer_case(ctx, amount="0.01", memo_label="min", requires_funds=True)
 
 
 @probe("trf.exact_balance", Area.TRF, EDGE, "Transfer of exactly the source's available balance",
        behaviours=["transfer.funds_boundary", "transfer.amount_accept"], mutating=True)
 def trf_exact_balance(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount_of="source", memo_label="exact")
+    _transfer_case(ctx, amount_of="source", memo_label="exact", requires_funds=True)
 
 
 @probe("trf.insufficient", Area.TRF, NEG, "Amount one cent above the source's available balance",
@@ -462,14 +480,14 @@ for _case, _value in INVALID_AMOUNTS.items():
 @probe("trf.double_submit", Area.TRF, EDGE, "Rapid repeated clicks on submit create at most one transfer",
        behaviours=["general.duplicate_submit", "transfer.record"], mutating=True)
 def trf_double_submit(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount="0.01", memo_label="dbl", clicks=3)
+    _transfer_case(ctx, amount="0.01", memo_label="dbl", clicks=3, requires_funds=True)
 
 
 @probe("trf.slow_submit", Area.TRF, EDGE, "Submitting on a slow network shows a waiting state",
        behaviours=["general.loading_state", "transfer.success_after_commit", "general.duplicate_submit"],
        mutating=True)
 def trf_slow_submit(ctx: ProbeContext) -> None:
-    _transfer_case(ctx, amount="0.01", memo_label="slow", latency_ms=1500)
+    _transfer_case(ctx, amount="0.01", memo_label="slow", latency_ms=1500, requires_funds=True)
 
 
 # --- transaction history -------------------------------------------------------------------------
@@ -526,8 +544,8 @@ def his_filter_status(ctx: ProbeContext) -> None:
 def his_filter_dates(ctx: ProbeContext) -> None:
     run = ctx.run
     rows = _history_baseline(ctx)
-    zone, basis = _timezone(run, rows)
-    ctx.fact("timezone", {"zone": zone, "basis": basis})
+    zone, basis, assumed = _timezone(run, rows)
+    ctx.fact("timezone", {"zone": zone, "basis": basis, "assumed": assumed})
     dates = sorted({d for r in rows if (d := local_date(r.get("occurred_at"), zone))})
     if len(dates) < 3:
         raise ProbeBlocked(f"need at least three distinct transaction dates, found {len(dates)}")
@@ -566,12 +584,13 @@ def his_filter_combined(ctx: ProbeContext) -> None:
     ctx.fact("seed_row", row)
     # Add a date range around the seed row (day before → day after) so the combination covers all four filter
     # dimensions without depending on boundary inclusivity, which his.filter.dates tests separately.
-    zone, basis = _timezone(run, rows)
+    zone, basis, assumed = _timezone(run, rows)
     day = local_date(row.get("occurred_at"), zone)
     values = {F_ACCOUNT: acc.value, F_TYPE: typ.value, F_STATUS: sta.value}
     if day is not None:
         values.update({F_START: (day - timedelta(days=1)).isoformat(), F_END: (day + timedelta(days=1)).isoformat()})
-        ctx.fact("dates", {"start": values[F_START], "end": values[F_END], "zone": zone, "basis": basis})
+        ctx.fact("dates", {"start": values[F_START], "end": values[F_END], "zone": zone, "basis": basis,
+                            "assumed": assumed})
     ctx.fact("application", _apply_filters(run, values, shot=True))
 
 
@@ -580,7 +599,7 @@ def his_filter_combined(ctx: ProbeContext) -> None:
 def his_empty(ctx: ProbeContext) -> None:
     run = ctx.run
     rows = _history_baseline(ctx)
-    zone, _ = _timezone(run, rows)
+    zone, _, _ = _timezone(run, rows)
     earliest = min((d for r in rows if (d := local_date(r.get("occurred_at"), zone))), default=None)
     year = (earliest.year if earliest else 2000) - 10
     ctx.fact("application", _apply_filters(run, {F_START: f"{year}-01-01", F_END: f"{year}-01-02"}, shot=True))

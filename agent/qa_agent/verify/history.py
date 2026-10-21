@@ -17,6 +17,21 @@ def observed_date(iso: str | None, zone: str) -> date | None:
         return None
 
 
+# When the UI states no timezone, UTC is only assumed: a date comparison counts only if it holds at both extremes.
+EXTREME_ZONES = ('Etc/GMT+12', 'UTC', 'Etc/GMT-14')
+
+
+def rows_in_range(rows: list[dict], start: date | None, end: date | None, zone: str, assumed: bool) -> list[dict] | None:
+    """Rows whose local date lies in [start, end]; None when the answer depends on an unstated timezone."""
+    results = []
+    for z in (EXTREME_ZONES if assumed else (zone,)):
+        days = [observed_date(r.get('occurred_at'), z) for r in rows]
+        if any(d is None for d in days):
+            return None
+        results.append([r for r, d in zip(rows, days) if (start is None or d >= start) and (end is None or d <= end)])
+    return results[0] if all(keys(r) == keys(results[0]) for r in results) else None
+
+
 def account_matches(label: str, value: str) -> bool:
     if not label:
         return False
@@ -46,13 +61,17 @@ def evaluate(b: Builder) -> None:
         account = block.get('account')
         if name in ('source_detail', 'destination_detail'):
             account = f.get('plan', {}).get('source' if name == 'source_detail' else 'destination')
+        # Zero rows inspected proves nothing about row content: unknown, not a vacuous pass. Whether a history should
+        # have rows at all is checked separately (e.g. accounts.detail.N.history, transfer.record.*).
         if account:
-            b.add('history.account_specific', name, all(account_matches(account, r.get('account') or '') for r in rows),
+            b.add('history.account_specific', name,
+                  all(account_matches(account, r.get('account') or '') for r in rows) if rows else None,
                   'every row mentions account', {'account': account, 'mismatches': [key(r) for r in rows
                    if not account_matches(account, r.get('account') or '')]}, sensitive=True)
         bad = [key(r) for r in rows if not all(r.get(k) for k in (
             'date_text', 'description', 'type', 'account', 'amount_text', 'status'))]
-        b.add('history.row_fields', name, not bad, 'all six row fields non-empty', {'missing': bad}, sensitive=True)
+        b.add('history.row_fields', name, not bad if rows else None, 'all six row fields non-empty', {'missing': bad},
+              sensitive=True)
         mismatches, missing, compared = [], [], []
         for i, row in enumerate(rows):
             match = api_by_id.get(row.get('id'))
@@ -99,11 +118,10 @@ def evaluate(b: Builder) -> None:
                   f'every row satisfies {label}', [key(r) for r in app.get('rows', []) if not predicate(r)], sensitive=True)
         elif kind == 'dates' and baseline is not None:
             zone = f.get('timezone', {}).get('zone')
-            if zone and all(observed_date(r.get('occurred_at'), zone) is not None for r in baseline):
+            if zone:
                 start = date.fromisoformat(app['start']) if app.get('start') else None
                 end = date.fromisoformat(app['end']) if app.get('end') else None
-                expected = [r for r in baseline if (start is None or observed_date(r['occurred_at'], zone) >= start)
-                            and (end is None or observed_date(r['occurred_at'], zone) <= end)]
+                expected = rows_in_range(baseline, start, end, zone, f['timezone'].get('assumed', False))
             kind = 'date_inclusive' if app.get('case', '').startswith(('single_day', 'boundaries')) else 'date'
         actual = app.get('rows')
         ok = keys(actual) == keys(expected) if actual is not None and expected is not None else None
@@ -123,19 +141,16 @@ def evaluate(b: Builder) -> None:
         start = date.fromisoformat(dates['start']) if dates.get('start') else None
         end = date.fromisoformat(dates['end']) if dates.get('end') else None
 
-        def in_range(r: dict) -> bool:
-            if not dates:
-                return True
-            day = observed_date(r.get('occurred_at'), dates.get('zone') or 'UTC')
-            return day is not None and (start is None or day >= start) and (end is None or day <= end)
-
-        expected = [r for r in baseline or [] if (r.get('type') or '').casefold() == (seed.get('type') or '').casefold()
+        matching = [r for r in baseline or [] if (r.get('type') or '').casefold() == (seed.get('type') or '').casefold()
                     and (r.get('status') or '').casefold() == (seed.get('status') or '').casefold()
-                    and account_matches(seed.get('account') or '', r.get('account') or '') and in_range(r)]
+                    and account_matches(seed.get('account') or '', r.get('account') or '')]
+        expected = (rows_in_range(matching, start, end, dates.get('zone') or 'UTC', dates.get('assumed', False))
+                    if dates else matching)
         b.add('history.filter.combined', 'set', bool(expected) and keys(app['rows']) == keys(expected)
-              if baseline is not None and seed and 'rows' in app else None,
+              if baseline is not None and seed and 'rows' in app and expected is not None else None,
               'non-empty baseline intersection of account/type/status' + ('/date range' if dates else ''),
-              {'expected': sorted(keys(expected)), 'actual': sorted(keys(app.get('rows', []))), 'dates': dates},
+              {'expected': sorted(keys(expected)) if expected is not None else None,
+               'actual': sorted(keys(app.get('rows', []))), 'dates': dates},
               sensitive=True)
         # Without the date dimension the combination test is incomplete; say so instead of implying coverage.
         b.add('history.filter.combined', 'dimensions', bool(dates) if seed else None,

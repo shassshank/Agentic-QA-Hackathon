@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from ..llm.meter import note_cache_hit
 from .link import key_for
 from .models import JudgeResult, Judgement
 
@@ -50,6 +51,7 @@ def judge_checks(checks, client, *, cache_dir: Path, token_budget: int = 12000):
         try:
             if path.exists():
                 decisions[index] = Judgement.model_validate_json(path.read_text())
+                note_cache_hit(client, 'judge', 'fast')
                 continue
         except ValueError:
             pass

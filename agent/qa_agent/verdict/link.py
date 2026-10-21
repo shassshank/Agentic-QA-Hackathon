@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 from ..llm.base import LLMUnavailable
+from ..llm.meter import note_cache_hit
 from ..models import RequirementCatalogue, Testability
 from ..verify.models import Check
 from .models import AssertionLink, Link, LinkResult
@@ -102,6 +103,7 @@ def link_requirements(catalogue, checks, client, *, cache_dir: Path) -> LinkResu
                   SYSTEM_PROMPT, prompt, LinkResult.model_json_schema(), 'low')
     path = cache_dir / 'link' / f'{key}.json'
     if path.exists():
+        note_cache_hit(client, 'link', 'planner')
         return validate(LinkResult.model_validate_json(path.read_text()), catalogue, checks)
     response = client.generate(prompt, phase='link', tier='planner', thinking='low',
                                system=SYSTEM_PROMPT, schema=LinkResult)

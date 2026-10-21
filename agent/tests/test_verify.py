@@ -373,6 +373,26 @@ def test_date_open_ends_reversed_and_missing_zone():
         assert selected('his.filter.dates', facts, 'history.filter.date.0.set').status == 'unknown'
 
 
+@pytest.mark.parametrize('start,end,expected', [
+    # Jan 3 12:00Z is Jan 3 or Jan 4 depending on the zone (UTC-12..UTC+14): inside Jan 2-4 either way.
+    ('2025-01-02', '2025-01-04', 'fail'),
+    # A single-day filter has no zone-independent answer when the UI states no zone (00:30Z is Jan 2 in Chicago).
+    ('2025-01-03', '2025-01-03', 'unknown'),
+])
+def test_assumed_timezone_only_decides_zone_independent_rows(start, end, expected):
+    baseline = block([row('r', occurred_at='2025-01-03T12:00:00Z')])
+    facts = dict(baseline=baseline, timezone={'zone': 'UTC', 'assumed': True}, applications=[dict(
+        case='boundaries_inner', start=start, end=end, rows=[])])
+    assert selected('his.filter.dates', facts, 'history.filter.date_inclusive.0.set').status == expected
+
+
+def test_empty_history_is_not_a_vacuous_pass():
+    facts = dict(combined=block(rows=[]), account_histories=[dict(block(rows=[]), account='Checking')])
+    checks = {c.id: c.status for c in report('his.combined', facts).checks}
+    assert checks['history.row_fields.combined'] == 'unknown'
+    assert checks['history.account_specific.account_histories.0'] == 'unknown'
+
+
 def test_success_requires_commit_and_no_error_alert():
     facts = transfer()
     facts['attempt']['timeline'][2]['status'] = 400
@@ -391,3 +411,15 @@ def test_cell_tuple_keys_are_not_truncated():
     facts['after']['rows'] = [a, b]
     facts['plan']['memo'] = 'new memo'
     assert selected('trf.valid', facts, 'transfer.record.count').status == 'pass'
+
+
+@pytest.mark.parametrize('facts,expected', [
+    (state(), 'pass'),
+    # Still loading after logout: no protected content yet, but no denied state either — later content could appear.
+    (state(landing_enter_visible=False, statuses=['Loading transactions…']), 'unknown'),
+    (state(settled=False), 'unknown'),
+    (state(settled=False, transaction_rows=3), 'fail'),
+])
+def test_refresh_after_logout_needs_settled_denied_state(facts, expected):
+    check = selected('ses.refresh_after_logout', {'after_reload': facts}, 'session.refresh_after_logout.after_reload')
+    assert check.status == expected

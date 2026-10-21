@@ -70,10 +70,11 @@ class DecisionClient:
         try:
             cached = json.loads(path.read_text())
             answers = validate_answers(cached['answers'], questions)
-            usage = cached.get('usage') or {}  # absent in caches written before usage was stored
+            usage = cached.get('usage')  # absent in caches written before usage was stored
             self.meter.record(CostEntry(phase=phase, model=cached['model'], cache_hit=True,
-                                        input_tokens=usage.get('input_tokens', 0),
-                                        output_tokens=usage.get('output_tokens', 0)))
+                                        input_tokens=(usage or {}).get('input_tokens', 0),
+                                        output_tokens=(usage or {}).get('output_tokens', 0),
+                                        usage_known=usage is not None))
             return DecisionAnswers(answers, cached['model'])
         except (OSError, ValueError, KeyError, TypeError):
             pass
@@ -146,6 +147,10 @@ class EscalationClient:
 
     def generate(self, prompt, *, phase, **kwargs):
         return self.client.generate(prompt, phase=phase + '_escalation', **kwargs)
+
+    def record_cache_hit(self, phase, tier):
+        from .meter import note_cache_hit
+        note_cache_hit(self.client, phase + '_escalation', tier)
 
 
 def ask_many(decider, requests, *, phase, cache_dir):

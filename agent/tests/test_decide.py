@@ -71,6 +71,40 @@ def test_client_request_cache_meter(tmp_path):
     assert get_decider(Settings(), meter) is None
 
 
+def test_meter_keeps_known_costs_and_flags_unknown_ones(tmp_path):
+    from qa_agent.models import CostEntry
+    from qa_agent.llm.meter import note_cache_hit
+    from qa_agent.llm.typesafe import EscalationClient
+    from qa_agent.report.data import cost_section
+
+    meter = CostMeter()
+    meter.record(CostEntry(phase='judge', model='jev-1.13.0', input_tokens=1_000_000))       # $0.042 live
+    meter.record(CostEntry(phase='judge', model='mystery-model', input_tokens=10))            # unpriced
+    meter.record(CostEntry(phase='link', model='jev-1.13.0', input_tokens=1_000_000))         # $0.042 live
+    meter.record(CostEntry(phase='link', model='jev-1.13.0', cache_hit=True, usage_known=False))  # legacy cache hit
+    # Provider-cached input is priced at the full input rate (upper bound), never as free.
+    meter.record(CostEntry(phase='interpret', model='gemini-3.8-flash', input_tokens=1_000_000, cached_tokens=800_000))
+    phases = meter.by_phase()
+    assert phases['judge']['cost_usd'] == pytest.approx(.042) and phases['judge']['unpriced_calls'] == 1
+    assert phases['link']['cold_cost_usd'] == pytest.approx(.042) and phases['link']['missing_usage'] == 1
+    assert phases['interpret']['cost_usd'] == pytest.approx(.75)
+    assert meter.total_cost() == pytest.approx(.834) and not meter.complete() and not meter.complete(cold=True)
+    meter.save(tmp_path / 'cost.json')
+    section = cost_section(tmp_path, {})
+    assert section['total_usd'] == pytest.approx(.834) and not section['complete']
+    assert 'lower bound' in section['note']
+
+    # Gemini decision caches have no per-item usage: their hits are recorded as unknown, under the escalation phase.
+    class Gemini:
+        def __init__(self): self.hits = []
+        def record_cache_hit(self, phase, tier): self.hits.append((phase, tier))
+    inner = Gemini()
+    note_cache_hit(EscalationClient(type('C', (), {'provider': 'gemini', 'record_cache_hit': inner.record_cache_hit})()),
+                   'judge', 'fast')
+    note_cache_hit(object(), 'judge', 'fast')  # clients without metering are ignored
+    assert inner.hits == [('judge_escalation', 'fast')]
+
+
 def test_retries(tmp_path, monkeypatch):
     delays, codes = [], iter([429, 529, 200])
     monkeypatch.setattr('qa_agent.llm.typesafe.time.sleep', delays.append)

@@ -83,7 +83,7 @@ in a finally block. The baseline app may remain on 8000/5173. Outputs live under
 ## Live results (2026-10-21, Jev only, after the review fixes)
 
 All nine variants ran end to end (patched copies on ports 8100/5273, shared DB reset before each, Gemini disabled
-so nothing escalates). Catalogue: runs/requirements.json (67 requirements).
+so nothing escalates). Catalogue: eval/catalogue.json (67 requirements, pinned by file hash).
 
 | Variant | TP | False fail | False pass | Honest unverified | Precision | Recall | Own defect detected |
 |---|---:|---:|---:|---:|---:|---:|---|

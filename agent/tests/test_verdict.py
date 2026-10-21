@@ -204,7 +204,8 @@ def test_judge_never_overrides_deterministic_fail(tmp_path):
     ('fail', 'full', 'confirmed', {}, 'failed', None),
     ('fail', 'partial', 'confirmed', {}, 'failed', None),
     ('fail', 'full', 'flaky', {}, 'unverified', 'flaky'),
-    ('fail', 'full', 'unconfirmed', {}, 'unverified', 'probe_blocked'),
+    ('fail', 'full', 'blocked', {}, 'unverified', 'probe_blocked'),
+    ('fail', 'full', 'unconfirmed', {}, 'unverified', 'unconfirmed'),
     ('pass', 'partial', None, {}, 'unverified', 'partial_coverage'),
     ('unknown', 'full', None, {}, 'unverified', 'checks_unknown'),
     ('unknown', 'full', None, {'needs_judge': True}, 'unverified', 'needs_judgement'),
@@ -226,22 +227,29 @@ def test_aggregate_no_link_and_not_testable():
     assert aggregate(catalogue(testability='not_testable'), links(), [check()])[0].reason == 'not_testable'
 
 
-@pytest.mark.parametrize('probe_status,repeat,expected', [
-    ('completed', 'fail', 'confirmed'), ('completed', 'pass', 'flaky'), ('completed', 'unknown', 'flaky'),
-    ('blocked', 'fail', 'unconfirmed'), ('errored', 'fail', 'unconfirmed'),
+@pytest.mark.parametrize('probe_status,repeat,observed,judged,expected', [
+    ('completed', 'fail', None, False, 'confirmed'), ('completed', 'pass', None, False, 'flaky'),
+    # A judged failure re-evaluates to 'unknown': the same judge input reproduces it, a changed one does not.
+    ('completed', 'unknown', None, True, 'confirmed'), ('completed', 'unknown', 'something else', True, 'unconfirmed'),
+    # An oracle unknown (e.g. concurrent activity) never confirms a deterministic failure.
+    ('completed', 'unknown', None, False, 'unconfirmed'),
+    ('blocked', 'fail', None, False, 'blocked'), ('errored', 'fail', None, False, 'blocked'),
 ])
-def test_confirmation(tmp_path, probe_status, repeat, expected):
+def test_confirmation(tmp_path, probe_status, repeat, observed, judged, expected):
     calls = []
     def runner(url, out, *, only):
         calls.append((url, out, only))
         return [dict(id='gen.labels', status=probe_status)]
+    question = {'text': ['Send'], 'context': 'labels'}
     def evaluator(obs):
-        return SimpleNamespace(checks=[check(repeat)])
-    c = check('fail')
+        return SimpleNamespace(checks=[check(repeat, needs_judge=judged, judge_input=question if judged else None,
+                                             **({'observed': observed} if observed else {}))])
+    # As the judge leaves it: needs_judge cleared and its decision recorded inside judge_input.
+    c = check('fail', judge_input={**question, 'decision': {'p': .1}} if judged else None)
     result = confirm_failures([c, check('fail', id='another')], 'http://offline', tmp_path,
                               runner=runner, evaluator=evaluator)
     assert result[(c.probe_id, c.id)] == expected
-    assert result[(c.probe_id, 'another')] == 'unconfirmed'
+    assert result[(c.probe_id, 'another')] == ('unconfirmed' if probe_status == 'completed' else 'blocked')
     assert len(calls) == 1 and calls[0][2] == ['gen.labels']
 
 
@@ -300,7 +308,7 @@ def test_confirmation_exception_is_unconfirmed(tmp_path):
         raise RuntimeError('browser unavailable')
     c = check('fail')
     result = confirm_failures([c], 'http://offline', tmp_path, runner=runner)
-    assert result[(c.probe_id, c.id)] == 'unconfirmed'
+    assert result[(c.probe_id, c.id)] == 'blocked'
 
 
 def test_failure_has_human_steps_and_evidence(tmp_path):

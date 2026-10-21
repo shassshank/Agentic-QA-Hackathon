@@ -19,7 +19,7 @@ REASONS = {
     'checks_unknown': 'The linked checks ran but could not reach a definite result.',
     'needs_judgement': 'A wording check needs judgement and none was confident enough.',
     'flaky': 'The failure did not reproduce consistently on re-run.',
-    'unconfirmed': 'A check failed but was not re-run to confirm it.',
+    'unconfirmed': 'A check failed once but was not reproduced: the re-run gave a different result, or no re-run was made.',
     'probe_blocked': 'The scenario could not finish, so its checks are unknown.',
     'concurrent_activity': 'Other activity on the shared account interfered with the measurement.',
     'llm_unavailable': 'The decision service was unavailable, so this was not linked.',
@@ -111,9 +111,15 @@ def cost_section(run_dir: Path, verdicts: dict) -> dict:
         cost, cached = row.get('cost_usd'), row.get('cached_calls', 0)
         # Meters saved before the billed/cold split have no cold figure; fall back to the billed cost.
         cold = row.get('cold_cost_usd', cost)
-        unpriced |= cost is None and bool(row.get('calls'))
-        cold_unpriced |= cold is None and bool(row.get('calls') or cached)
-        untokened |= bool(cached) and not row.get('input_tokens')
+        if 'unpriced_calls' in row:
+            # Current meters count unknown entries explicitly and keep known subtotals.
+            unpriced |= bool(row['unpriced_calls'])
+            untokened |= bool(row.get('missing_usage'))
+        else:
+            # Older meters: a None cost means some entry was unpriced; cached calls without tokens lack usage.
+            unpriced |= cost is None and bool(row.get('calls'))
+            cold_unpriced |= cold is None and bool(row.get('calls') or cached)
+            untokened |= bool(cached) and not row.get('input_tokens')
         total += cost or 0.0
         cold_total += cold or 0.0
         rows.append(dict(phase=phase, provider=provider, models=sorted(names), calls=row.get('calls', 0),

@@ -162,13 +162,15 @@ def interpret(
     cache_file = _cache_path(cache_dir, key)
     usage_file = cache_file.with_suffix(".usage.json")
     if use_cache and cache_file.exists():
+        catalogue = RequirementCatalogue.model_validate_json(cache_file.read_text())
         if meter is not None:
             try:
                 for raw in json.loads(usage_file.read_text()):
                     meter.record(CostEntry.model_validate({**raw, "cache_hit": True}))
             except (OSError, ValueError):
-                pass  # usage was not recorded for this cached catalogue
-        return RequirementCatalogue.model_validate_json(cache_file.read_text())
+                # Cached before usage was recorded: the call happened, its cost is unknown — say so.
+                meter.record(CostEntry(phase="interpret", model=catalogue.model, cache_hit=True, usage_known=False))
+        return catalogue
 
     prompt = _prompt(parsed)
     response = client.generate(

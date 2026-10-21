@@ -22,7 +22,8 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT.parent / 'test-website'
 OUTPUT = ROOT / 'runs/eval'
-CATALOGUE = ROOT / 'runs/requirements.json'
+# Ground truth names requirement ids from this exact catalogue; a re-interpreted PRD renumbers them.
+CATALOGUE = ROOT / 'eval/catalogue.json'
 
 
 def read(path):
@@ -48,7 +49,8 @@ def resolve_variant(definitions, name, chain=()):
 
 def definitions():
     data = read(ROOT / 'eval/variants.json')
-    if data['catalogue_sha'] != read(CATALOGUE)['prd_sha256']:
+    if (data['catalogue_sha'] != read(CATALOGUE)['prd_sha256']
+            or data['catalogue_file_sha256'] != hashlib.sha256(CATALOGUE.read_bytes()).hexdigest()):
         raise ValueError('Evaluation catalogue SHA mismatch')
     return data
 
@@ -260,8 +262,9 @@ def score(names):
         reports = {}
         for path in sorted((OUTPUT / name).glob('run*/verdicts.json')):
             report = read(path)
-            if report.get('catalogue', {}).get('prd_sha256', data['catalogue_sha']) != data['catalogue_sha']:
-                raise ValueError(f'Run catalogue SHA mismatch: {path}')
+            pinned, used = read(CATALOGUE), report.get('catalogue', {})
+            if any(used.get(k, pinned[k]) != pinned[k] for k in ('prd_sha256', 'model', 'prompt_version')):
+                raise ValueError(f'Run catalogue mismatch: {path}')
             model = path.parent.name.removeprefix('run-')
             reports[model] = report
             def optional(file):

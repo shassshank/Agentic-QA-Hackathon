@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ..llm.meter import note_cache_hit
 from .link import key_for
 from .models import ReviewResult, Verdict
 
@@ -43,6 +44,7 @@ def review_failures(verdicts: list[Verdict], catalogue, client, *, cache_dir: Pa
         path = cache_dir / 'review' / f'{key}.json'
         if path.exists():
             decided[index] = json.loads(path.read_text())
+            note_cache_hit(client, 'review', 'fast')
         else:
             pending.append((index, item, path))
     if pending:

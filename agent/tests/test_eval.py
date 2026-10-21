@@ -95,6 +95,18 @@ def test_agent_never_imports_eval():
                 assert (node.module or '').split('.')[0] != 'eval', path
 
 
+def test_reinterpreted_catalogue_is_rejected(tmp_path, monkeypatch):
+    import json
+    import eval.harness as harness
+    # Same PRD (same prd_sha256), different requirement ids: the ground truth would silently mis-score.
+    other = json.loads(harness.CATALOGUE.read_text())
+    other['requirements'] = other['requirements'][:-1]
+    (tmp_path / 'catalogue.json').write_text(json.dumps(other))
+    monkeypatch.setattr(harness, 'CATALOGUE', tmp_path / 'catalogue.json')
+    with pytest.raises(ValueError, match='catalogue SHA mismatch'):
+        harness.definitions()
+
+
 def test_detection_rate_counts_distinct_mutants():
     run = lambda variant, detected: dict(variant=variant, TP=0, FP=0, expected=1, detected=detected)
     # Three detecting reports of one mutant and one missing report of another: one of two mutants detected.

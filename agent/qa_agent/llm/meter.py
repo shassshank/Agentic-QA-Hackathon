@@ -24,8 +24,11 @@ DEFAULT_PRICES: PriceTable = {
 }
 
 
-def _add(total: float | None, cost: float | None) -> float | None:
-    return None if total is None or cost is None else total + cost
+def note_cache_hit(client, phase: str, tier: str) -> None:
+    """Record a decision served from a cache that does not store usage (clients without metering ignore it)."""
+    record = getattr(client, "record_cache_hit", None)
+    if record is not None:
+        record(phase, tier)
 
 
 class CostMeter:
@@ -37,22 +40,26 @@ class CostMeter:
         self.entries.append(entry)
 
     def cost_of(self, entry: CostEntry) -> float | None:
-        """Price of the call itself, whether or not this run served it from cache."""
+        """Price of the call itself, whether or not this run served it from cache; None when unknown.
+
+        Provider-side cached input tokens are charged at the full input rate: their discounted rate is not in
+        the price table, so this is an upper bound for those tokens rather than pricing them as free.
+        """
         price = self.prices.get(entry.model)
-        if price is None:
+        if price is None or not entry.usage_known:
             return None
         input_price, output_price = price
-        billable_input = max(entry.input_tokens - entry.cached_tokens, 0)
-        return (billable_input * input_price + (entry.output_tokens + entry.thinking_tokens) * output_price) / 1e6
+        return (entry.input_tokens * input_price + (entry.output_tokens + entry.thinking_tokens) * output_price) / 1e6
 
     def by_phase(self) -> dict[str, dict[str, float | int | None]]:
         """Billed cost covers calls made in this run; cold cost also prices answers served from cache.
 
-        Cache hits recorded before usage was cached carry no tokens, so their cold cost is a lower bound.
+        Costs are sums of the entries whose cost is known; ``unpriced_calls`` and ``missing_usage`` count the
+        rest, so one unknown entry never erases the known spend and never goes unflagged.
         """
         summary: dict[str, dict[str, float | int | None]] = defaultdict(
             lambda: {"calls": 0, "cached_calls": 0, "input_tokens": 0, "output_tokens": 0, "thinking_tokens": 0,
-                     "cost_usd": 0.0, "cold_cost_usd": 0.0}
+                     "cost_usd": 0.0, "cold_cost_usd": 0.0, "unpriced_calls": 0, "missing_usage": 0}
         )
         for entry in self.entries:
             row = summary[entry.phase]
@@ -62,14 +69,21 @@ class CostMeter:
             row["output_tokens"] = int(row["output_tokens"] or 0) + entry.output_tokens
             row["thinking_tokens"] = int(row["thinking_tokens"] or 0) + entry.thinking_tokens
             cost = self.cost_of(entry)
-            row["cold_cost_usd"] = _add(row["cold_cost_usd"], cost)
+            if cost is None:
+                flag = "missing_usage" if not entry.usage_known else "unpriced_calls"
+                row[flag] = int(row[flag] or 0) + 1
+                continue
+            row["cold_cost_usd"] = float(row["cold_cost_usd"] or 0) + cost
             if not entry.cache_hit:
-                row["cost_usd"] = _add(row["cost_usd"], cost)
+                row["cost_usd"] = float(row["cost_usd"] or 0) + cost
         return dict(summary)
 
-    def total_cost(self, *, cold: bool = False) -> float | None:
-        costs = [self.cost_of(e) for e in self.entries if cold or not e.cache_hit]
-        return None if any(c is None for c in costs) else sum(c for c in costs if c is not None)
+    def total_cost(self, *, cold: bool = False) -> float:
+        """Sum of known costs; see ``complete`` for whether anything was left out."""
+        return sum(c for e in self.entries if cold or not e.cache_hit if (c := self.cost_of(e)) is not None)
+
+    def complete(self, *, cold: bool = False) -> bool:
+        return all(self.cost_of(e) is not None for e in self.entries if cold or not e.cache_hit)
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,6 +92,8 @@ class CostMeter:
             "by_phase": self.by_phase(),
             "total_cost_usd": self.total_cost(),
             "cold_cost_usd": self.total_cost(cold=True),
+            "complete": self.complete(),
+            "cold_complete": self.complete(cold=True),
             "prices_per_million": self.prices,
         }
         path.write_text(json.dumps(payload, indent=2))
