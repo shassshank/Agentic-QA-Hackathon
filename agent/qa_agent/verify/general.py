@@ -73,3 +73,44 @@ def evaluate(b: Builder) -> None:
         actions = f.get('actions')
         b.add('general.not_found', 'action', bool(re.search(r'dashboard|home', text(actions), re.I))
               if actions is not None else None, 'action back to dashboard/home', actions)
+    if pid == 'gen.nav':
+        links = f.get('nav', []) + f.get('page_links', [])
+        offered = [dict(label=l.get('label'), path=l.get('path')) for l in links
+                   if OUT_OF_SCOPE.search(f"{l.get('label', '')} {l.get('path', '')}")]
+        b.add('general.out_of_scope_features', 'navigation', not offered if links else None,
+              'no signup, external payment, bill-pay, loan, card or multi-user feature among navigation and page links',
+              {'offered': offered, 'links_seen': len(links)})
+    if '_requests' in f:
+        external_requests(b, f['_requests'])
+
+
+# PRD "Seed data expectations" / "Out of scope": features the demo must not offer.
+OUT_OF_SCOPE = re.compile(r'sign ?up|register|create (an )?account|password reset|bill ?pay|pay (a )?bills?|'
+                          r'\bloans?\b|credit cards?|debit cards?|\bcards\b|invest|budget|joint account|'
+                          r'add (a )?(user|customer)|switch (user|customer)|external (bank|payment)|link (a )?bank',
+                          re.I)
+
+
+def site(origin: str) -> str:
+    """Host without port, reduced to its last two labels (app.x.com and api.x.com share x.com)."""
+    host = re.sub(r'^[a-z]+://', '', origin).split(':')[0].lower()
+    return host if re.fullmatch(r'[\d.]+|localhost|\[.*\]', host) else '.'.join(host.split('.')[-2:])
+
+
+def external_requests(b: Builder, summary: dict) -> None:
+    """The browser must not initiate payments or connect to an outside bank: every request goes to the app."""
+    target = summary.get('target')
+    if not target:
+        b.add('general.external_requests', 'requests', None, 'all browser requests go to the application', summary)
+        return
+    own = {site(target)} | {site(o) for o in summary.get('data_origins', [])}
+    outside = [(m, o) for m, o in summary.get('requests', []) if site(o) not in own]
+    sends = [dict(method=m, origin=o) for m, o in outside if m not in ('GET', 'HEAD', 'OPTIONS')]
+    reads = [dict(method=m, origin=o) for m, o in outside if m in ('GET', 'HEAD', 'OPTIONS')]
+    # Sending data elsewhere is the violation; a read from elsewhere (fonts, CDN) cannot be told apart from a bank
+    # connection by origin alone, so it stays unknown rather than passing or failing.
+    ok = False if sends else None if reads else True
+    b.add('general.external_requests', 'requests', ok,
+          'no request leaves the application (target origin and the origin serving its account data)',
+          {'target': target, 'app_origins': sorted(own), 'outside_sends': sends, 'outside_reads': reads},
+          reason='browser requests to hosts outside the application' if outside else None)

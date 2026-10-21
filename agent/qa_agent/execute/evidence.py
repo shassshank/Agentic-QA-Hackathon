@@ -8,8 +8,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from playwright.sync_api import ConsoleMessage, Error as PlaywrightError, Page, Response
+from urllib.parse import urlsplit
+
+from playwright.sync_api import ConsoleMessage, Error as PlaywrightError, Page, Request, Response
 from pydantic import BaseModel, Field
+
+def url_origin(url: str) -> str | None:
+    """scheme://host[:port] for network URLs; None for data:, blob: and other non-network schemes."""
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}" if parts.scheme in ("http", "https", "ws", "wss") and parts.netloc else None
+
 
 # Only the target's own API is evidence; static assets are noise.
 API_MARKERS = ("/api/", "/health")
@@ -61,12 +69,21 @@ class EvidenceRecorder:
         self.steps: list[StepRecord] = []
         self.network: list[NetworkRecord] = []
         self.console: list[ConsoleRecord] = []
+        # Every request the page starts (method, origin), including ones that never get a response, so a call to
+        # a host outside the application is visible even though only the app's own API is kept as evidence.
+        self.requests: list[tuple[str, str]] = []
         self._shots = 0
 
     def attach(self, page: Page) -> None:
+        page.on("request", self._on_request)
         page.on("response", self._on_response)
         page.on("console", self._on_console)
         page.on("pageerror", lambda exc: self.console.append(ConsoleRecord(type="pageerror", text=str(exc))))
+
+    def _on_request(self, request: Request) -> None:
+        origin = url_origin(request.url)
+        if origin and (request.method, origin) not in self.requests:
+            self.requests.append((request.method, origin))
 
     def _on_response(self, response: Response) -> None:
         if not any(marker in response.url for marker in API_MARKERS):

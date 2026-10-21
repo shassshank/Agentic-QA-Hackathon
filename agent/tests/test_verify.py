@@ -400,6 +400,36 @@ def test_rejection_explanation_excludes_preexisting_field_hint():
     assert check.judge_input['text'] == [f'{hint} {error}']
 
 
+@pytest.mark.parametrize('requests,data_origins,expected', [
+    # Local build: frontend and API on different ports of the same host.
+    ([['GET', 'http://localhost:5173'], ['POST', 'http://localhost:8000']], [], 'pass'),
+    # Hosted: API on a sibling subdomain, or on another domain that serves the app's own account data.
+    ([['POST', 'https://api.demobank.example']], [], 'pass'),
+    ([['POST', 'https://demobank-api.onrender.com']], ['https://demobank-api.onrender.com'], 'pass'),
+    # Sending data to an outside host is the violation the PRD forbids.
+    ([['POST', 'https://api.somebank.com']], [], 'fail'),
+    # An outside read (font, CDN) cannot be told apart from a bank connection: unknown, not a pass.
+    ([['GET', 'https://fonts.gstatic.com']], [], 'unknown'),
+])
+def test_external_requests(requests, data_origins, expected):
+    facts = {'_requests': {'target': 'https://app.demobank.example', 'requests': requests,
+                           'data_origins': data_origins}}
+    if expected == 'pass' and requests[0][1].startswith('http://localhost'):
+        facts['_requests']['target'] = 'http://localhost:5173'
+    assert selected('gen.not_found', facts, 'general.external_requests.requests').status == expected
+
+
+@pytest.mark.parametrize('label,path,expected', [
+    ('Transfer', '/transfer', 'pass'),
+    ('Pay bills', '/bills', 'fail'),
+    ('Apply for a loan', '/loans', 'fail'),
+    ('Sign up', '/signup', 'fail'),
+])
+def test_out_of_scope_features(label, path, expected):
+    facts = {'nav': [dict(label='Dashboard', path='/dashboard', h1=['Welcome']), dict(label=label, path=path, h1=[])]}
+    assert selected('gen.nav', facts, 'general.out_of_scope_features.navigation').status == expected
+
+
 def test_empty_history_is_not_a_vacuous_pass():
     facts = dict(combined=block(rows=[]), account_histories=[dict(block(rows=[]), account='Checking')])
     checks = {c.id: c.status for c in report('his.combined', facts).checks}

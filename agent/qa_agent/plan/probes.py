@@ -685,7 +685,7 @@ def gen_viewports(ctx: ProbeContext) -> None:
 
 
 @probe("gen.nav", Area.GEN, N, "Navigation links and page buttons lead to their labeled destinations",
-       behaviours=["general.navigation"])
+       behaviours=["general.navigation", "general.out_of_scope_features"])
 def gen_nav(ctx: ProbeContext) -> None:
     run = ctx.run
     run.enter_demo()

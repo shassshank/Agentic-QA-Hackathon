@@ -24,6 +24,7 @@ from ..recover.policy import RecoveryPolicy
 
 from ..execute import ActionError, Harness, ScenarioRun
 from ..execute.browser import DESKTOP
+from ..execute.evidence import url_origin
 from ..models import Area, ScenarioKind
 
 ProbeStatus = Literal["completed", "blocked", "errored"]
@@ -114,6 +115,20 @@ class ProbeContext:
         """Unique, recognisable memo so our records are distinguishable from anyone else's."""
         return f"qa-{self.run_tag}-{label}"[:60]
 
+    def _record_requests(self, run: ScenarioRun) -> None:
+        """Where the page sent requests, and which origins served the app's own account data (its backend)."""
+        summary = self.facts.setdefault("_requests", {"target": url_origin(run.base_url), "requests": [],
+                                                      "data_origins": []})
+        for method, origin in run.recorder.requests:
+            if [method, origin] not in summary["requests"]:
+                summary["requests"].append([method, origin])
+        for record in run.recorder.network:
+            body = record.response_body
+            origin = url_origin(record.url)
+            if isinstance(body, dict) and ({"accounts", "transactions"} & body.keys()) \
+                    and origin and origin not in summary["data_origins"]:
+                summary["data_origins"].append(origin)
+
     @contextmanager
     def session(self, label: str = "main", *, viewport: dict[str, int] | None = None) -> Iterator[ScenarioRun]:
         """A fresh browser context (no cookies, no storage). Nested use keeps the outer one intact."""
@@ -127,6 +142,7 @@ class ProbeContext:
                 yield run
             finally:
                 self.facts.setdefault("_timeline", {})[label] = run.timeline()
+                self._record_requests(run)
                 # Recoveries and heals are part of what happened; oracles and the report must see them.
                 for step in run.recorder.steps:
                     if step.action in ("recovery", "heal"):

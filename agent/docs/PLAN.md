@@ -284,5 +284,8 @@ Jev is used during development for small routing and triage judgments (noted in 
     "Enter an amount to transfer." failed TRF-007 (hints read before submit are now subtracted). Fresh-DB run:
     exactly the 5 real defects fail (TRF-006, TRF-008, TRF-011, HIS-007, HIS-009).
   - Open: refresh reports/ once Gemini quota resets (that run had no link escalation: 36 unverified); reset the
-    DB (`make reset`) before any exported run. No oracle yet for "no external payment/bank requests" (GEN-007)
-    or "no out-of-scope features" (SEED-007).
+    DB (`make reset`) before any exported run.
+  - Added oracles: `general.external_requests` (every probe; the recorder now logs each request's method and
+    origin, and a non-GET to a host outside the app fails, an outside GET stays unknown) and
+    `general.out_of_scope_features` (gen.nav links vs the PRD's out-of-scope list). Both pass live locally; they
+    are linked to GEN-007 / SEED-007 on the next full run.
